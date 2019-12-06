@@ -1,5 +1,13 @@
 import { Algebra } from "./Algebra";
 export class SimpleAlgebra extends Algebra<number> {
+    isZero(x: number): boolean {
+        return x === 0;
+    }
+
+    decrement(x: number): number {
+        return x - 1;
+    }
+
     sum(x: number, y: number): number {
         return x + y;
     }

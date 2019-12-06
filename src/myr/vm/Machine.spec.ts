@@ -60,9 +60,9 @@ describe(Machine, () => {
         })
 
         it('compares', () => {
-            expect(machine.compare()).toEqual(1)  // 3 > 2
+            expect(machine.compare()).toEqual(-1) // 3 > 2
             machine.swap()
-            expect(machine.compare()).toEqual(-1) // 2 < 3
+            expect(machine.compare()).toEqual(1)  // 2 < 3
             machine.push(2)
             expect(machine.compare()).toEqual(0)  // 2 == 2
         })

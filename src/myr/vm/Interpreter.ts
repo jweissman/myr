@@ -4,13 +4,21 @@ import { Algebra } from "./Algebra";
 import Instruction, { prettyInstruction, instruct, prettyProgram } from "./Instruction";
 import chalk from 'chalk';
 
-// type Frame = { retAddr: ... }
+type Frame = { retAddr: number }
 
 class Interpreter<T> {
     public machine: Machine<T>;
 
     private ip: number = -1;
-    private retAddr: number = -1;
+    // private retAddr: number = -1;
+    private frames: Frame[] = []
+
+    private get topFrame() { return this.frames[this.frames.length-1]; }
+
+    private get retAddr(): number {
+        return this.topFrame.retAddr;
+    }
+
     private currentProgram: Instruction<T>[] = [];
 
     constructor(algebra: Algebra<T>) {
@@ -21,7 +29,9 @@ class Interpreter<T> {
         this.currentProgram = program; 
         this.ip = this.indexForLabel("main") || 0;
         console.debug('\n---\n'+prettyProgram(program)+'\n---\n');
-        while (this.ip < this.currentProgram.length) {
+        let maxSteps = 128;
+        let steps = 0;
+        while (this.ip < this.currentProgram.length && steps++ < maxSteps) {
             let instruction = this.currentInstruction;
             // console.log(chalk.yellow(String(this.ip).padEnd(4)) + prettyInstruction(instruction))
             this.execute(instruction);
@@ -34,7 +44,7 @@ class Interpreter<T> {
     get result() { return this.machine.peek(); }
 
     private push(value: T | undefined) {
-        if (value) {
+        if (value !== undefined) {
             this.machine.push(value);
         } else {
             throw new Error("Push must have a value")
@@ -84,10 +94,23 @@ class Interpreter<T> {
         }
     }
 
+    private jump_z(target: string | undefined) {
+        if (target) {
+            if (this.machine.topIsZero()) {
+                this.jump(target);
+            }
+        } else {
+            throw new Error("Conditional jump_z must have a target")
+        }
+    }
+
     private execute(instruction: Instruction<T>) {
+        // console.log("EXEC", prettyInstruction(instruction))
         let { op } = instruction;
         switch (op) {
             case 'noop': break;
+            case 'swap': this.machine.swap(); break;
+            case 'dec': this.machine.dec(); break;
             case 'add': this.machine.add(); break;
             case 'sub': this.machine.subtract(); break;
             case 'mul': this.machine.multiply(); break;
@@ -101,13 +124,16 @@ class Interpreter<T> {
             case 'jump_if_gt':
                 this.jump_gt(instruction.value, instruction.target);
                 break;
+            case 'jump_if_zero':
+                this.jump_z(instruction.target);
+                break;
             case 'call': 
-                this.retAddr = this.ip;
+                this.frames.push({ retAddr: this.ip })
                 this.jump(instruction.target);
                 break;
             case 'ret':
-                this.ip = this.retAddr; // won't work more than one level deep,
-                                      // needs to be a stack of frames... :/
+                this.ip = this.retAddr;
+                this.frames.pop();
                 break;
             default: assertNever(op);
         }

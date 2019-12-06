@@ -3,6 +3,7 @@ export abstract class AbstractMachine<T, ID> {
     abstract pop(): void;
     abstract peek(): T | undefined;
 
+    abstract dec(): void;
     abstract add(): void;
     abstract subtract(): void;
     abstract multiply(): void;

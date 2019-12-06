@@ -1,4 +1,6 @@
 export abstract class Algebra<T> {
+    abstract isZero(x: T): boolean;
+    abstract decrement(x: T): T;
     abstract sum(x: T, y: T): T;
     abstract difference(x: T, y: T): T;
     abstract product(x: T, y: T): T;

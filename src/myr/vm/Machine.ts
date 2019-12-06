@@ -4,7 +4,6 @@ import { DB } from "./DB";
 import { SimpleDB } from "./SimpleDB";
 
 export default class Machine<T> extends AbstractMachine<T, string> {
-    
     stack: Array<T> = [];
     db: DB<T, string> = new SimpleDB<T>();
 
@@ -19,6 +18,8 @@ export default class Machine<T> extends AbstractMachine<T, string> {
             this.stack[this.stack.length - 2]
         ];
     }
+
+    topIsZero() { return this.algebra.isZero(this.stackTop); }
 
     peek(): T | undefined {
         if (this.stackTop !== null) {
@@ -52,6 +53,12 @@ export default class Machine<T> extends AbstractMachine<T, string> {
     compare(): 0 | 1 | -1 {
         let [a,b] = this.topTwo;
         return this.algebra.compare(b,a);
+    }
+
+    dec() {
+        let top = this.stackTop;
+        this.stack.pop();
+        this.stack.push(this.algebra.decrement(top));
     }
 
     add(): void {
@@ -88,10 +95,12 @@ export default class Machine<T> extends AbstractMachine<T, string> {
     }
 
     private binaryOp(fn: (left: T, right: T) => T): void {
-        let right = this.peek();
-        this.pop();
-        let left = this.peek();
-        this.pop();
+
+    // get topTwo(): [T,T] { 
+        let [right, left] = this.topTwo;
+        // this.pop();
+        // let left = this.peek();
+        // this.pop();
         if (left && right) {
             let result = fn(left, right)
             this.push(result);
