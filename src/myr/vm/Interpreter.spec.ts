@@ -1,6 +1,6 @@
 import Interpreter from "./Interpreter"
 import { SimpleAlgebra } from "./SimpleAlgebra";
-import { instruct } from "./Instruction";
+import { instruct, AbstractASTNode } from "./Instruction";
 
 describe(Interpreter, () => {
     let interpreter: Interpreter<number>;
@@ -213,16 +213,16 @@ describe(Interpreter, () => {
         expect(interpreter.result).toEqual(13)
     })
 
-    it('funcalls', () => {
-        interpreter.run([
-            instruct('add', { label: 'sum' }),
-            instruct('ret'),
-            instruct('push', { value: 4, label: 'main' }),
-            instruct('push', { value: 9 }),
-            instruct('call', { target: 'sum' }),
-        ])
-        expect(interpreter.result).toEqual(13)
-    })
+    // it('funcalls', () => {
+    //     interpreter.run([
+    //         instruct('add', { label: 'sum' }),
+    //         instruct('ret'),
+    //         instruct('push', { value: 4, label: 'main' }),
+    //         instruct('push', { value: 9 }),
+    //         instruct('call', { target: 'sum' }),
+    //     ])
+    //     expect(interpreter.result).toEqual(13)
+    // })
 
     it('nested funcalls', () => {
         interpreter.run([
@@ -241,6 +241,39 @@ describe(Interpreter, () => {
             instruct('add'),
         ])
         expect(interpreter.result).toEqual(3)
+    })
+
+    // test.todo
+    xit('compiles lambdas dynamically', () => {
+        class Defun extends AbstractASTNode {
+            constructor(public params: string[], public body: AbstractASTNode) {
+                super();
+            }
+        }
+        class Funcall extends AbstractASTNode {
+            constructor(public name: string, public args: AbstractASTNode[]) {
+                super();
+            }
+        }
+        class Ident extends AbstractASTNode {
+            constructor(public name: string) { super(); }
+        }
+
+        // twice = (f) => (x) => f(f(x))
+        interpreter.run([
+            instruct('compile', {
+                args: ['f'],
+                body: new Defun(
+                    ['x'],
+                    new Funcall('f',
+                        [new Funcall('f',
+                            [new Ident('x')]
+                        )]
+                    )
+                )
+            })
+        ])
+        // expect that we have new code for this function...
     })
 
     describe('conditional jumps', () => {

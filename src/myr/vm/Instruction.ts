@@ -1,7 +1,11 @@
 import chalk from 'chalk';
 import { OpCode } from "./OpCode";
 
-type Instruction<T> = {
+// type AST = ASTNode;
+export class AbstractASTNode {
+}
+
+type Instruction<T, N extends AbstractASTNode> = {
     op: OpCode;
 
     // sparse little dict
@@ -9,11 +13,19 @@ type Instruction<T> = {
     value?: T;        // value to push
     label?: string;   // label at this instruction
     target?: string;  // jump/call target
+
+    // for 'builtin' methods to be supplied literally...
+    jsMethod?: Function; 
+    arity?: number; // really for builtins right now...
+
+    // for compile...
+    args?: string[];
+    body?: N;
 };
 
 export function instruct<T>(
     op: OpCode,
-    details: { value?: T, label?: string, key?: string, target?: string} = {}
+    details: { value?: T, label?: string, key?: string, target?: string, jsMethod?: Function, arity?: number} = {}
 ) {
     return { op, ...details }
 }

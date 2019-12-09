@@ -19,6 +19,11 @@ export default class Machine<T extends number | boolean | string> extends Abstra
         ];
     }
 
+    topN(arity: number): T[] {
+        return this.stack.slice(this.stack.length - arity);
+        // throw new Error("Method not implemented.");
+    }
+
     topIsZero() { return this.algebra.isZero(this.stackTop); }
 
     peek(): T {

@@ -122,6 +122,9 @@ class Interpreter<T extends number | boolean | string> {
             case 'noop': break;
             case 'push':  this.push(instruction.value); break;
             case 'pop':   this.machine.pop(); break;
+            case 'dup':
+                this.machine.push(this.machine.stackTop);
+                break;
             case 'swap':  this.machine.swap(); break;
             case 'dec':   this.machine.decrement(); break;
             case 'inc':   this.machine.increment(); break;
@@ -172,6 +175,19 @@ class Interpreter<T extends number | boolean | string> {
                 } else {
                     throw new Error("invoke expects stack top to have reference to (string value of) function name to call...")
                 }
+                break;
+            case 'exec':
+                if (instruction.jsMethod) {
+                    let fn = instruction.jsMethod;
+                    if (instruction.arity) {
+                        let args = this.machine.topN(instruction.arity);
+                        // console.log(`Call ${fn.name}...`, { args })
+                        instruction.jsMethod(...args);
+                    } else {
+                        instruction.jsMethod() // >>?
+                    }
+                }
+                // throw new Error("raw exec not impl")
                 break;
             case 'ret':
                 this.ip = this.retAddr;
