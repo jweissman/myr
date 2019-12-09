@@ -1,22 +1,28 @@
 import assertNever from 'assert-never';
 import Machine from "./Machine";
 import { Algebra } from "./Algebra";
-import Instruction, { prettyInstruction, instruct, prettyProgram } from "./Instruction";
-import chalk from 'chalk';
+import Instruction, { prettyInstruction, prettyProgram } from "./Instruction";
+import { DB } from './DB';
+import { SimpleDB } from './SimpleDB';
 
-type Frame = { retAddr: number }
+type Frame<T> = { retAddr: number, db: DB<T, string> }
 
-class Interpreter<T> {
+class Interpreter<T extends number | boolean | string> {
+    private trace: boolean = false;
+
     public machine: Machine<T>;
 
     private ip: number = -1;
-    // private retAddr: number = -1;
-    private frames: Frame[] = []
+    private frames: Frame<T>[] = [{ retAddr: -1, db: new SimpleDB() }]
 
     private get topFrame() { return this.frames[this.frames.length-1]; }
 
     private get retAddr(): number {
         return this.topFrame.retAddr;
+    }
+
+    private get db(): DB<T, string> {
+        return this.topFrame.db;
     }
 
     private currentProgram: Instruction<T>[] = [];
@@ -29,11 +35,17 @@ class Interpreter<T> {
         this.currentProgram = program; 
         this.ip = this.indexForLabel("main") || 0;
         console.debug('\n---\n'+prettyProgram(program)+'\n---\n');
-        let maxSteps = 128;
+        let maxSteps = 1024 * 1024; // halt if we ran away :D
         let steps = 0;
         while (this.ip < this.currentProgram.length && steps++ < maxSteps) {
             let instruction = this.currentInstruction;
-            // console.log(chalk.yellow(String(this.ip).padEnd(4)) + prettyInstruction(instruction))
+            if (this.trace) {
+                console.log(
+                    `@${this.ip}: ` +
+                    prettyInstruction(instruction) +
+                    " (stack: " + this.machine.stack + ")"
+                );
+            }
             this.execute(instruction);
             this.ip++;
         }
@@ -53,7 +65,7 @@ class Interpreter<T> {
 
     private store(key: string | undefined) {
         if (key) {
-            this.machine.store(key);
+            this.machine.store(key, this.db);
         } else {
             throw new Error("Must have a key to reference stored variable by")
         }
@@ -61,7 +73,7 @@ class Interpreter<T> {
 
     private load(key: string | undefined) {
         if (key) {
-            this.machine.load(key);
+            this.machine.load(key, this.db);
         } else {
             throw new Error("Must have a key to reference loaded variable by")
         }
@@ -70,7 +82,6 @@ class Interpreter<T> {
     private jump(target: string | undefined) {
         if (target) {
             let index = this.indexForLabel(target)
-            // debugger;
             if (index !== null) {
                 this.ip = index - 1
             } else {
@@ -84,7 +95,8 @@ class Interpreter<T> {
     private jump_gt(value: T | undefined, target: string | undefined) {
         if (value && target) {
             this.machine.push(value);
-            let doJump = this.machine.compare() === 1;
+            this.machine.compare();
+            let doJump = this.machine.stackTop === 1;
             this.machine.pop();
             if (doJump) {
                 this.jump(target)
@@ -105,22 +117,41 @@ class Interpreter<T> {
     }
 
     private execute(instruction: Instruction<T>) {
-        // console.log("EXEC", prettyInstruction(instruction))
         let { op } = instruction;
         switch (op) {
             case 'noop': break;
-            case 'swap': this.machine.swap(); break;
-            case 'dec': this.machine.dec(); break;
-            case 'add': this.machine.add(); break;
-            case 'sub': this.machine.subtract(); break;
-            case 'mul': this.machine.multiply(); break;
-            case 'div': this.machine.divide(); break;
-            case 'pow': this.machine.exponentiate(); break;
-            case 'pop': this.machine.pop(); break;
-            case 'push': this.push(instruction.value); break;
+            case 'push':  this.push(instruction.value); break;
+            case 'pop':   this.machine.pop(); break;
+            case 'swap':  this.machine.swap(); break;
+            case 'dec':   this.machine.decrement(); break;
+            case 'inc':   this.machine.increment(); break;
+            case 'add':   this.machine.add(); break;
+            case 'sub':   this.machine.subtract(); break;
+            case 'mul':   this.machine.multiply(); break;
+            case 'div':   this.machine.divide(); break;
+            case 'pow':   this.machine.exponentiate(); break;
+            case 'cmp':   this.machine.compare(); break;
+            case 'cmp_gt': 
+                this.machine.compare();
+                let gt: boolean = this.machine.peek() === 1;
+                this.machine.pop();
+                this.push(gt as T);
+                break;
+            case 'cmp_lt': 
+                this.machine.compare();
+                let lt: boolean = this.machine.peek() === -1;
+                this.machine.pop();
+                this.push(lt as T);
+                break;
+            case 'cmp_eq': 
+                this.machine.compare();
+                let eq: boolean = this.machine.peek() === 0;
+                this.machine.pop();
+                this.push(eq as T);
+                break;
             case 'store': this.store(instruction.key); break;
-            case 'load': this.load(instruction.key); break;
-            case 'jump': this.jump(instruction.target); break;
+            case 'load':  this.load(instruction.key); break;
+            case 'jump':  this.jump(instruction.target); break;
             case 'jump_if_gt':
                 this.jump_gt(instruction.value, instruction.target);
                 break;
@@ -128,8 +159,19 @@ class Interpreter<T> {
                 this.jump_z(instruction.target);
                 break;
             case 'call': 
-                this.frames.push({ retAddr: this.ip })
+                this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) })
                 this.jump(instruction.target);
+                break;
+            case 'invoke':  // call a fn dynamically by name...
+                // todo test...
+                let top = this.machine.stackTop;
+                if (top && typeof top === 'string') {
+                    this.machine.pop()
+                    this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) })
+                    this.jump(top);
+                } else {
+                    throw new Error("invoke expects stack top to have reference to (string value of) function name to call...")
+                }
                 break;
             case 'ret':
                 this.ip = this.retAddr;
@@ -143,12 +185,10 @@ class Interpreter<T> {
         let labelledStep = this.currentProgram.find(
             instruction => instruction.label === label
         )
-
         if (labelledStep) {
             let at = this.currentProgram.indexOf(labelledStep);
             return at;
         } else {
-            // console.warn("Could not find an instruction with label: " + label)
             return null;
         }
     }

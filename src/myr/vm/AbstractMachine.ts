@@ -1,9 +1,11 @@
-export abstract class AbstractMachine<T, ID> {
+import { DB } from "./DB";
+
+export abstract class AbstractMachine<T extends number | boolean | string, ID> {
     abstract push(value: T): void;
     abstract pop(): void;
     abstract peek(): T | undefined;
 
-    abstract dec(): void;
+    abstract decrement(): void;
     abstract add(): void;
     abstract subtract(): void;
     abstract multiply(): void;
@@ -11,8 +13,8 @@ export abstract class AbstractMachine<T, ID> {
     abstract exponentiate(): void;
 
     abstract swap(): void;
-    abstract compare(): -1 | 0 | 1;
+    abstract compare(): void;
 
-    abstract store(key: ID): void;
-    abstract load(key: ID): void;
+    abstract store(key: ID, db: DB<T, ID>): void;
+    abstract load(key: ID, db: DB<T, ID>): void;
 }

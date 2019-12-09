@@ -28,6 +28,14 @@ describe(Interpreter, () => {
             expect(interpreter.result).toEqual(9)
         })
 
+        it('increments values', () => {
+            interpreter.run([
+                instruct('push', { value: 10 }),
+                instruct('inc'),
+            ])
+            expect(interpreter.result).toEqual(11)
+        })
+
         it('adds values', () => {
             interpreter.run([
                 instruct('push', { value: 2 }),
@@ -73,6 +81,101 @@ describe(Interpreter, () => {
             ])
             expect(interpreter.result).toEqual(9)
         });
+
+        describe('compares values', () => {
+            it('cmp', () => {
+                interpreter.run([
+                    instruct('push', { value: 1 }),
+                    instruct('push', { value: 0 }),
+                    instruct('cmp'),
+                ])
+                expect(interpreter.result).toEqual(1)
+
+                interpreter.run([
+                    instruct('push', { value: 0 }),
+                    instruct('push', { value: 1 }),
+                    instruct('cmp'),
+                ])
+                expect(interpreter.result).toEqual(-1)
+
+                interpreter.run([
+                    instruct('push', { value: 1 }),
+                    instruct('push', { value: 1 }),
+                    instruct('cmp'),
+                ])
+                expect(interpreter.result).toEqual(0)
+            })
+
+            it('cmp_gt', () => {
+                interpreter.run([
+                    instruct('push', { value: 10 }),
+                    instruct('push', { value: 20 }),
+                    instruct('cmp_gt')
+                ])
+                expect(interpreter.result).toEqual(false)
+
+                interpreter.run([
+                    instruct('push', { value: 20 }),
+                    instruct('push', { value: 10 }),
+                    instruct('cmp_gt')
+                ])
+                expect(interpreter.result).toEqual(true)
+
+                interpreter.run([
+                    instruct('push', { value: 20 }),
+                    instruct('push', { value: 20 }),
+                    instruct('cmp_gt')
+                ])
+                expect(interpreter.result).toEqual(false)
+            })
+
+            it('cmp_lt', () => {
+                interpreter.run([
+                    instruct('push', { value: 10 }),
+                    instruct('push', { value: 20 }),
+                    instruct('cmp_lt')
+                ])
+                expect(interpreter.result).toEqual(true)
+
+                interpreter.run([
+                    instruct('push', { value: 20 }),
+                    instruct('push', { value: 10 }),
+                    instruct('cmp_lt')
+                ])
+                expect(interpreter.result).toEqual(false)
+
+                interpreter.run([
+                    instruct('push', { value: 20 }),
+                    instruct('push', { value: 20 }),
+                    instruct('cmp_lt')
+                ])
+                expect(interpreter.result).toEqual(false)
+            })
+
+            it('cmp_eq', () => {
+                interpreter.run([
+                    instruct('push', { value: 10 }),
+                    instruct('push', { value: 20 }),
+                    instruct('cmp_eq')
+                ])
+                expect(interpreter.result).toEqual(false)
+
+                interpreter.run([
+                    instruct('push', { value: 20 }),
+                    instruct('push', { value: 10 }),
+                    instruct('cmp_eq')
+                ])
+                expect(interpreter.result).toEqual(false)
+
+                interpreter.run([
+                    instruct('push', { value: 20 }),
+                    instruct('push', { value: 20 }),
+                    instruct('cmp_eq')
+                ])
+                expect(interpreter.result).toEqual(true)
+            })
+
+        })
     })
 
     it('unconditional jumps', () => {
@@ -96,7 +199,7 @@ describe(Interpreter, () => {
             instruct('add'), // i.e., push 7
         ])
         expect(interpreter.result).toEqual(7)
-        expect(interpreter.machine.stack.length).toEqual(3)
+        expect(interpreter.machine.stack.length).toEqual(1)
     })
 
     it('funcalls', () => {
@@ -174,33 +277,49 @@ describe(Interpreter, () => {
 
     it('iterates', () => {
         interpreter.run([
-            // take top two items on stack AND mult
             instruct('noop', { label: 'multiply' }),
-            instruct('store', { key: 'acc' }),
-            instruct('dec'),
+            instruct('store', { key: 'multiplier' }),
+            instruct('store', { key: 'acc' }), // accum
+            instruct('pop'),
+            instruct('store', { key: 'n' }), // multiplicand
+            instruct('pop'),
             instruct('noop', { label: 'loop' }),
-            instruct('swap'),
+            instruct('load', { key: 'n' }),
             instruct('dec'),
-            instruct('swap'),
-            instruct('load', { key: 'acc' }),
+            instruct('jump_if_zero', { target: 'done'}),
+            instruct('store', { key: 'n' }),
+            instruct('pop'),
+            instruct('load', { key: 'multiplier'}),
+            instruct('load', { key: 'acc'}),
             instruct('add'),
             instruct('store', { key: 'acc' }),
             instruct('pop'),
-            instruct('pop'),
-            instruct('swap'),
-            instruct('jump_if_zero', { target: 'done'}),
-            instruct('swap'),
             instruct('jump', { target: 'loop'}),
             instruct('noop', { label: 'done' }),
             instruct('load', { key: 'acc' }),
             instruct('ret'),
-
             instruct('noop', { label: 'main' } ),
-            instruct('push', { value: 8 }),
-            instruct('push', { value: 8 }),
+            instruct('push', { value: 12 }),
+            instruct('push', { value: 24 }),
             instruct('call', { target: 'multiply' }),
         ])
-        expect(interpreter.result).toEqual(64)
-
+        expect(interpreter.result).toEqual(288)
     })
+
+    it('isolates variables to frames', () => {
+        interpreter.run([
+            instruct('noop', { label: 'subroutine' }),
+            instruct('push', { value: 2 }),
+            instruct('store', { key: 'i' }),
+            instruct('ret'),
+            instruct('noop', { label: 'main' }),
+            instruct('push', { value: 1 }),
+            instruct('store', { key: 'i' }),
+            instruct('call', { target: 'subroutine' }),
+            instruct('load', { key: 'i' }),
+        ])
+        expect(interpreter.result).toEqual(1)
+    })
+
+    test.todo('dynamic invoke');
 })

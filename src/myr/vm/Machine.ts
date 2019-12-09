@@ -3,11 +3,11 @@ import { Algebra } from "./Algebra";
 import { DB } from "./DB";
 import { SimpleDB } from "./SimpleDB";
 
-export default class Machine<T> extends AbstractMachine<T, string> {
+export default class Machine<T extends number | boolean | string> extends AbstractMachine<T, string> {
     stack: Array<T> = [];
     db: DB<T, string> = new SimpleDB<T>();
 
-    constructor(private algebra: Algebra<T>) {
+    constructor(private algebra: Algebra<T>) { //}, private db: DB<T, string>) {
         super();
     }
 
@@ -21,7 +21,7 @@ export default class Machine<T> extends AbstractMachine<T, string> {
 
     topIsZero() { return this.algebra.isZero(this.stackTop); }
 
-    peek(): T | undefined {
+    peek(): T {
         if (this.stackTop !== null) {
             return this.stackTop;
         } else {
@@ -50,15 +50,26 @@ export default class Machine<T> extends AbstractMachine<T, string> {
         this.stack.push(second)
     }
 
-    compare(): 0 | 1 | -1 {
-        let [a,b] = this.topTwo;
-        return this.algebra.compare(b,a);
+    compare(): void {
+        let top = this.stackTop;
+        this.stack.pop()
+        let second = this.stackTop;
+        this.stack.pop()
+        // let [a,b] = this.topTwo;
+        let result: number = this.algebra.compare(second, top);
+        this.stack.push(result as T);
     }
 
-    dec() {
+    decrement() {
         let top = this.stackTop;
         this.stack.pop();
         this.stack.push(this.algebra.decrement(top));
+    }
+
+    increment() {
+        let top = this.stackTop;
+        this.stack.pop();
+        this.stack.push(this.algebra.increment(top));
     }
 
     add(): void {
@@ -81,28 +92,26 @@ export default class Machine<T> extends AbstractMachine<T, string> {
         this.binaryOp(this.algebra.power)
     }
 
-    store(key: string): void {
+    store(key: string, db: DB<T, string>): void {
         let top = this.peek();
         if (top) {
-            this.db.put(key, top)
+            db.put(key, top)
         } else {
             throw new Error("Called #store on an empty stack.");
         }
     }
 
-    load(key: string): void {
-        this.push(this.db.get(key));
+    load(key: string, db: DB<T, string>): void {
+        this.push(db.get(key));
     }
 
     private binaryOp(fn: (left: T, right: T) => T): void {
-
-    // get topTwo(): [T,T] { 
         let [right, left] = this.topTwo;
-        // this.pop();
-        // let left = this.peek();
-        // this.pop();
         if (left && right) {
             let result = fn(left, right)
+            this.stack.pop();
+            this.stack.pop();
+            // console.debug("[Machine.binaryOp]", { fn: fn.name, left, right, result })
             this.push(result);
         } else {
             throw new Error("Must have at least two items to perform binary operations?")

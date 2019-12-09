@@ -8,6 +8,10 @@ export class SimpleAlgebra extends Algebra<number> {
         return x - 1;
     }
 
+    increment(x: number): number {
+        return x + 1;
+    }
+
     sum(x: number, y: number): number {
         return x + y;
     }
@@ -29,12 +33,13 @@ export class SimpleAlgebra extends Algebra<number> {
     }
 
     compare(x: number, y: number): 0 | 1 | -1 {
+        let result: 0 | 1 | -1 = 0;
         if (x > y) {
-            return 1;
+            result = 1;
         } else if (x < y) {
-            return -1;
-        } else {
-            return 0;
+            result = -1;
         }
+        // console.log("COMPARE", { x,y,result })
+        return result;
     }
 }

@@ -1,6 +1,8 @@
 import Machine from "./Machine";
 import { Algebra } from "./Algebra";
 import { SimpleAlgebra } from "./SimpleAlgebra";
+import { SimpleDB } from "./SimpleDB";
+import { DB } from "./DB";
 
 describe(Machine, () => {
     let machine: Machine<number>;
@@ -60,20 +62,33 @@ describe(Machine, () => {
         })
 
         it('compares', () => {
-            expect(machine.compare()).toEqual(-1) // 3 > 2
-            machine.swap()
-            expect(machine.compare()).toEqual(1)  // 2 < 3
             machine.push(2)
-            expect(machine.compare()).toEqual(0)  // 2 == 2
+            machine.push(3)
+            machine.compare()
+            expect(machine.peek()).toEqual(-1) // 3 > 2
+            machine.pop()
+
+            machine.push(3)
+            machine.push(2)
+            machine.compare()
+            expect(machine.peek()).toEqual(1)  // 2 < 3
+            machine.pop()
+
+            machine.push(2)
+            machine.push(2)
+            machine.compare()
+            expect(machine.peek()).toEqual(0)  // 2 == 2
+            machine.pop()
         })
     })
 
     it('storage and retrieval of values', () => {
+        let db: DB<number, string> = new SimpleDB();
         machine.push(123);
-        machine.store('hello');
+        machine.store('hello', db);
         machine.pop();
         expect(machine.peek()).toEqual(undefined)
-        machine.load('hello')
+        machine.load('hello', db)
         expect(machine.peek()).toEqual(123)
     })
 })
