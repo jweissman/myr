@@ -32,5 +32,8 @@ export type OpCode = 'push'
                    | 'invoke'          // INVOKE -- invoke function with label identified by (top)
                    | 'exec'            // EXEC   -- execute a JS function given as such by [jsMethod],
                                        //           giving stack as positional args up to [arity]
+                   | 'compile'         // COMPILE -- take ast and generate code for it
+
                    | 'ret'
+                   | 'halt' // hard stop
                    ;

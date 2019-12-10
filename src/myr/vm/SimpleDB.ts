@@ -1,12 +1,14 @@
 import { DB } from "./DB";
-import { Value } from "./Machine";
+import { Value } from "./AbstractMachine";
 export class SimpleDB extends DB {
+    underlyingStores: DB[];
     store: {
         [key: string]: Value;
     } = {};
 
-    constructor(private underlyingStore: DB | null = null) {
+    constructor(...underlyingStores: DB[]) {
         super();
+        this.underlyingStores = underlyingStores;
     }
 
     get(key: string): Value {
@@ -15,10 +17,11 @@ export class SimpleDB extends DB {
         if (retrievedValue !== undefined) {
             return retrievedValue;
         } else {
-            if (this.underlyingStore && this.underlyingStore.get(key) !== undefined) {
-                return this.underlyingStore.get(key);
+            let matchingBag = this.underlyingStores.find(store => store.get(key) !== undefined);
+            if (matchingBag) {
+                return matchingBag.get(key)
             } else {
-                console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStore })
+                console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStores })
                 throw new Error("No such variable defined: " + key)
             }
         }

@@ -1,8 +1,7 @@
-import { AbstractMachine } from "./AbstractMachine";
+import { AbstractMachine, Value } from "./AbstractMachine";
 import { Algebra } from "./Algebra";
 import { DB } from "./DB";
 
-export type Value = string | boolean | number
 export default class Machine extends AbstractMachine {
     stack: Array<Value> = [];
 

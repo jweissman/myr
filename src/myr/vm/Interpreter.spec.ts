@@ -1,13 +1,46 @@
-import Interpreter from "./Interpreter"
+import Interpreter, { Compiler } from "./Interpreter"
 import { SimpleAlgebra } from "./SimpleAlgebra";
-import { instruct } from "./Instruction";
+import { instruct, Instruction } from "./Instruction";
+import assertNever from "assert-never";
+
+// support compile spec
+abstract class AbstractASTNode { abstract get gen(): Instruction[] }
+class Defun extends AbstractASTNode {
+    constructor(public params: string[], public body: AbstractASTNode) {
+        super();
+    }
+    get gen(): Instruction[] {
+        return [instruct('noop', { label: 'defun' })]
+    }
+}
+class Funcall extends AbstractASTNode {
+    constructor(public name: string, public args: AbstractASTNode[]) {
+        super();
+    }
+    get gen(): Instruction[] {
+        // throw new Error("Method not implemented.");
+        return [instruct('noop', { label: 'funcall' })]
+    }
+}
+
+class Ident extends AbstractASTNode {
+    constructor(public name: string) { super(); }
+    get gen(): Instruction[] {
+        return [instruct('load', { key: this.name })]
+    }
+}
+
+class MiniCompiler extends Compiler<AbstractASTNode> {
+    generateCode(ast: AbstractASTNode): Instruction[] { return ast.gen; }
+}
 
 describe(Interpreter, () => {
-    let interpreter: Interpreter;
+    let interpreter: Interpreter<AbstractASTNode>;
 
     beforeEach(() => {
         let algebra = new SimpleAlgebra();
-        interpreter = new Interpreter(algebra);
+        let compiler = new MiniCompiler();
+        interpreter = new Interpreter(algebra, compiler);
     })
 
     it('swaps the top two elements of the stack', () => {
@@ -276,7 +309,7 @@ describe(Interpreter, () => {
             instruct('add'), // i.e., push 7
         ])
         expect(interpreter.result).toEqual(7)
-        expect(interpreter.machine.stack.length).toEqual(1)
+        expect(interpreter.machine.stack.length).toEqual(0)
     })
 
     it('funcalls', () => {
@@ -320,37 +353,26 @@ describe(Interpreter, () => {
         expect(interpreter.result).toEqual(3)
     })
 
-    // test.todo
-    xit('compiles lambdas dynamically', () => {
-        // class Defun extends AbstractASTNode {
-        //     constructor(public params: string[], public body: AbstractASTNode) {
-        //         super();
-        //     }
-        // }
-        // class Funcall extends AbstractASTNode {
-        //     constructor(public name: string, public args: AbstractASTNode[]) {
-        //         super();
-        //     }
-        // }
-        // class Ident extends AbstractASTNode {
-        //     constructor(public name: string) { super(); }
-        // }
-
+    it('compiles lambdas dynamically', () => {
         // twice = (f) => (x) => f(f(x))
-        // interpreter.run([
-        //     instruct('compile', {
-        //         args: ['f'],
-        //         body: new Defun(
-        //             ['x'],
-        //             new Funcall('f',
-        //                 [new Funcall('f',
-        //                     [new Ident('x')]
-        //                 )]
-        //             )
-        //         )
-        //     })
-        // ])
+        let body = new Defun(['f'],
+            new Defun(
+                ['x'],
+                new Funcall('f',
+                    [new Funcall('f',
+                        [new Ident('x')]
+                    )]
+                )
+            )
+        )
+
+        let compile = instruct('compile', { body }) 
+        let program = [compile]
+        interpreter.install(program)
+        let initialCodeLen = interpreter.code.length
+        interpreter.run(program)
         // expect that we have new code for this function...
+        expect(interpreter.code.length).toBeGreaterThan(initialCodeLen)
     })
 
     describe('conditional jumps', () => {

@@ -1,22 +1,31 @@
 import assertNever from 'assert-never';
-import Machine, { Value } from "./Machine";
+import Machine from "./Machine";
 import { Algebra } from "./Algebra";
-import { prettyInstruction, prettyProgram, Instruction } from "./Instruction";
+import { prettyInstruction, prettyProgram, Instruction, instruct } from "./Instruction";
 import { DB } from './DB';
 import { SimpleDB } from './SimpleDB';
 import { OpCode } from './OpCode';
+import { Value, FunctionReference } from './AbstractMachine';
 
 const average = (arr: number[]) => arr.reduce((a,b) => a + b, 0) / arr.length
 
 type Frame = { retAddr: number, db: DB }
 
-class Interpreter {
+abstract class Compiler<T> {
+    abstract generateCode(ast: T): Instruction[];
+}
+
+class Interpreter<T> {
     private trace: boolean = false;
 
     public machine: Machine;
 
     private ip: number = -1;
     private frames: Frame[] = [{ retAddr: -1, db: new SimpleDB() }]
+
+    constructor(algebra: Algebra, private compiler: Compiler<T>) {
+        this.machine = new Machine(algebra);
+    }
 
     private get topFrame() { return this.frames[this.frames.length-1]; }
 
@@ -30,19 +39,22 @@ class Interpreter {
 
     private currentProgram: Instruction[] = [];
 
-    constructor(algebra: Algebra) {
-        this.machine = new Machine(algebra);
+    get code(): Instruction[] { return this.currentProgram }
+
+    install(program: Instruction[]): void {
+        this.currentProgram = [ ...program, instruct('halt') ]; 
     }
 
     run(program: Instruction[]) {
+        this.install(program);
         let startTime = new Date().getTime();
-        this.currentProgram = program; 
         this.ip = this.indexForLabel("main") || 0;
         // console.debug('\n---\n'+prettyProgram(program)+'\n---\n');
-        let maxSteps = 1024 * 1024; // halt if we ran away :D
+        // let maxSteps = 1024 * 1024 * 256; // halt if we ran away :D
         let steps = 0;
         let stackLengths = []
-        while (this.ip < this.currentProgram.length && steps++ < maxSteps) {
+        while (this.ip < this.currentProgram.length) { //} && steps++ < maxSteps) {
+            steps += 1;
             let instruction = this.currentInstruction;
             if (this.trace) {
                 console.log(
@@ -51,11 +63,10 @@ class Interpreter {
                     );
             }
 
-            if (this.trace && this.machine.stack.length) {
-                console.log(" (stack before: " + this.machine.stack + ")");
-            }
+            // if (this.trace && this.machine.stack.length) {
+            //     console.log(" (stack before: " + this.machine.stack + ")");
+            // }
             this.execute(instruction);
-            // if (this.trace) {
             if (this.trace && this.machine.stack.length) {
                 console.log(
                     " (stack after: " + this.machine.stack + ")"
@@ -66,15 +77,21 @@ class Interpreter {
         }
         let endTime = new Date().getTime();
         let elapsed = endTime - startTime;
-        if (this.trace) {
+        // if (this.trace) {
         console.log(`---> Ran ${steps} instructions in ${elapsed}ms: ${steps / elapsed} ops/ms`)
         console.log(`---> Avg stack size: ${average(stackLengths)}`)
-        }
+        // }
     }
 
     private get currentInstruction() { return this.currentProgram[this.ip]; }
 
-    get result() { return this.machine.peek(); }
+    get result() {
+        let value = this.machine.peek();
+        if (value !== undefined) {
+            this.machine.pop();
+        }
+        return value;
+    }
 
     private push(value: Value | undefined) {
         if (value !== undefined) {
@@ -106,6 +123,7 @@ class Interpreter {
             if (index !== null) {
                 this.ip = index - 1
             } else {
+                    console.log("CURRENT PROG BEFORE JUMP", prettyProgram(this.code), { target })
                 throw new Error("Jump target not found: " + target)
             }
         } else {
@@ -137,6 +155,7 @@ class Interpreter {
         }
     }
 
+    lambdaCount: number = 0;
     private execute(instruction: Instruction) {
         let op: OpCode = instruction.op;
         switch (op) {
@@ -196,6 +215,11 @@ class Interpreter {
                     this.machine.pop()
                     this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) })
                     this.jump(top);
+                } else if (top && typeof top === 'object') {
+                    let { label, closure } = top as FunctionReference;
+                    this.machine.pop()
+                    this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db) }); //new SimpleDB(this.db) })
+                    this.jump(label);
                 } else {
                     throw new Error("invoke expects stack top to have reference to (string value of) function name to call...")
                 }
@@ -205,17 +229,44 @@ class Interpreter {
                     let fn = instruction.jsMethod;
                     if (instruction.arity) {
                         let args = this.machine.topN(instruction.arity);
-                        // console.log(`Call ${fn.name}...`, { args })
                         instruction.jsMethod(...args);
                     } else {
                         instruction.jsMethod() // >>?
                     }
                 }
-                // throw new Error("raw exec not impl")
+                break;
+            case 'compile':
+                if (instruction.body) {
+                    // assume we're building a lambda??
+                    // we need to grab the surrounding context here..
+
+                    this.lambdaCount += 1
+                    let label = `lambda-${this.lambdaCount}`;
+                    // scope: this.db
+                    // { label, closureContext }
+                    let functionRef: FunctionReference = { label, closure: new SimpleDB(this.db) }
+
+                    // console.log("GEN", { body: instruction.body})
+                    let code = this.compiler.generateCode(instruction.body)
+                    // console.log("COMPILE'D!", { code })
+                    this.currentProgram = [
+                        ...this.code,
+                        instruct('halt'),
+                        instruct('noop', { label }),
+                        ...code,
+                    ]
+                    // console.log("CURRENT PROG AFTER COMPILE", prettyProgram(this.currentProgram))
+                    this.push(functionRef);
+                } else {
+                    throw new Error("asked to gen code without code (ast expected in instr. 'body')")
+                }
                 break;
             case 'ret':
                 this.ip = this.retAddr;
                 this.frames.pop();
+                break;
+            case 'halt':
+                this.ip = this.currentProgram.length;
                 break;
             default: assertNever(op);
         }
@@ -234,4 +285,5 @@ class Interpreter {
     }
 }
 
+export { Compiler };
 export default Interpreter;

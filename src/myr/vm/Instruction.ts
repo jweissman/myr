@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { OpCode } from "./OpCode";
-import { Value } from './Machine';
+import { Value } from './AbstractMachine';
 
 export type Instruction = {
     op: OpCode;
@@ -15,20 +15,26 @@ export type Instruction = {
     jsMethod?: Function; 
     arity?: number; // really for builtins right now...
 
-    // for compile...
-    args?: string[];
-    body?: any[];
+    body?: any;
 };
 
-export function instruct<T>(
+export function instruct(
     op: OpCode,
-    details: { value?: T, label?: string, key?: string, target?: string, jsMethod?: Function, arity?: number} = {}
+    details: {
+        value?: Value,
+        label?: string,
+        key?: string,
+        target?: string,
+        jsMethod?: Function,
+        arity?: number,
+        body?: any
+    } = {}
 ) {
     return { op, ...details }
 }
 
 let pad = 12;
-export function prettyInstruction<T, N>(inst: Instruction) {
+export function prettyInstruction(inst: Instruction) {
     let arg = inst.value || inst.key || inst.target 
     let result;
     if (arg && !(arg === undefined)) {
@@ -42,7 +48,7 @@ export function prettyInstruction<T, N>(inst: Instruction) {
     return chalk.blueBright(result);
 }
 
-export function prettyProgram<T,N>(prog: Instruction[]) {
+export function prettyProgram(prog: Instruction[]) {
     return prog.map((instruction, index) =>
         String(index).padEnd(4) + prettyInstruction(instruction)
     ).join("\n")

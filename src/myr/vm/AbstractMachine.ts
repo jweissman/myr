@@ -1,9 +1,11 @@
 import { DB } from "./DB";
 
+export type FunctionReference = { label: string, closure: DB }
+export type Value = string | boolean | number | FunctionReference
 export abstract class AbstractMachine {
-    abstract push(value: number | string | boolean): void;
+    abstract push(value: Value): void;
     abstract pop(): void;
-    abstract peek(): number | string | boolean | undefined;
+    abstract peek(): Value;
 
     abstract decrement(): void;
     abstract add(): void;
