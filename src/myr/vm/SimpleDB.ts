@@ -1,14 +1,19 @@
 import { DB } from "./DB";
 import { Value } from "./AbstractMachine";
+type Store = { [key: string]: Value; }
 export class SimpleDB extends DB {
     underlyingStores: DB[];
-    store: {
-        [key: string]: Value;
-    } = {};
+    store: Store = {};
 
     constructor(...underlyingStores: DB[]) {
         super();
         this.underlyingStores = underlyingStores;
+    }
+
+    static fromStore(store: Store, ...underlyingStores: DB[]) {
+        let db = new SimpleDB(...underlyingStores)
+        db.store = store;
+        return db;
     }
 
     get(key: string): Value {
@@ -29,5 +34,11 @@ export class SimpleDB extends DB {
 
     put(key: string, value: Value): void {
         this.store[key] = value;
+    }
+
+    clone(): SimpleDB {
+        let {store} = this;
+        let copy = {...store}
+        return SimpleDB.fromStore(copy, this)
     }
 }

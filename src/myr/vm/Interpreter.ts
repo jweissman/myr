@@ -78,8 +78,10 @@ class Interpreter<T> {
         let endTime = new Date().getTime();
         let elapsed = endTime - startTime;
         // if (this.trace) {
-        console.log(`---> Ran ${steps} instructions in ${elapsed}ms: ${steps / elapsed} ops/ms`)
-        console.log(`---> Avg stack size: ${average(stackLengths)}`)
+        if (elapsed > 0) {
+            console.log(`---> Ran ${steps} instructions in ${elapsed}ms: ${steps / elapsed} ops/ms`)
+        }
+        // console.log(`---> Avg stack size: ${average(stackLengths)}`)
         // }
     }
 
@@ -123,7 +125,7 @@ class Interpreter<T> {
             if (index !== null) {
                 this.ip = index - 1
             } else {
-                    console.log("CURRENT PROG BEFORE JUMP", prettyProgram(this.code), { target })
+                    // console.log("CURRENT PROG BEFORE JUMP", prettyProgram(this.code), { target })
                 throw new Error("Jump target not found: " + target)
             }
         } else {
@@ -152,6 +154,42 @@ class Interpreter<T> {
             }
         } else {
             throw new Error("Conditional jump_z must have a target")
+        }
+    }
+
+    private invoke() {
+        let top = this.machine.stackTop;
+        if (top && typeof top === 'string') {
+            this.machine.pop()
+            this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) })
+            this.jump(top);
+        } else if (top && typeof top === 'object') {
+            // console.log("INVOKE", top)
+            let { label, closure } = top as FunctionReference;
+            this.machine.pop()
+            this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db) }); //new SimpleDB(this.db) })
+            this.jump(label);
+        } else {
+            throw new Error("invoke expects stack top to have reference to (string value of) function name to call...")
+        }
+    }
+
+    private compile(body: any) {
+        if (body) {
+            this.lambdaCount += 1
+            let label = `lambda-${this.lambdaCount}`;
+            let functionRef: FunctionReference = { label, closure: this.db.clone() } // new SimpleDB(this.db) }
+            let code = this.compiler.generateCode(body)
+            this.currentProgram = [
+                ...this.code,
+                instruct('halt'),
+                instruct('noop', { label }),
+                ...code,
+            ]
+            // console.log("COMPILED", { functionRef })
+            this.push(functionRef);
+        } else {
+            throw new Error("asked to gen code without code (ast expected in instr. 'body')")
         }
     }
 
@@ -208,22 +246,7 @@ class Interpreter<T> {
                 this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) })
                 this.jump(instruction.target);
                 break;
-            case 'invoke':  // call a fn dynamically by name...
-                // todo test...
-                let top = this.machine.stackTop;
-                if (top && typeof top === 'string') {
-                    this.machine.pop()
-                    this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) })
-                    this.jump(top);
-                } else if (top && typeof top === 'object') {
-                    let { label, closure } = top as FunctionReference;
-                    this.machine.pop()
-                    this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db) }); //new SimpleDB(this.db) })
-                    this.jump(label);
-                } else {
-                    throw new Error("invoke expects stack top to have reference to (string value of) function name to call...")
-                }
-                break;
+            case 'invoke': this.invoke(); break;
             case 'exec':
                 if (instruction.jsMethod) {
                     let fn = instruction.jsMethod;
@@ -231,36 +254,11 @@ class Interpreter<T> {
                         let args = this.machine.topN(instruction.arity);
                         instruction.jsMethod(...args);
                     } else {
-                        instruction.jsMethod() // >>?
+                        instruction.jsMethod()
                     }
                 }
                 break;
-            case 'compile':
-                if (instruction.body) {
-                    // assume we're building a lambda??
-                    // we need to grab the surrounding context here..
-
-                    this.lambdaCount += 1
-                    let label = `lambda-${this.lambdaCount}`;
-                    // scope: this.db
-                    // { label, closureContext }
-                    let functionRef: FunctionReference = { label, closure: new SimpleDB(this.db) }
-
-                    // console.log("GEN", { body: instruction.body})
-                    let code = this.compiler.generateCode(instruction.body)
-                    // console.log("COMPILE'D!", { code })
-                    this.currentProgram = [
-                        ...this.code,
-                        instruct('halt'),
-                        instruct('noop', { label }),
-                        ...code,
-                    ]
-                    // console.log("CURRENT PROG AFTER COMPILE", prettyProgram(this.currentProgram))
-                    this.push(functionRef);
-                } else {
-                    throw new Error("asked to gen code without code (ast expected in instr. 'body')")
-                }
-                break;
+            case 'compile': this.compile(instruction.body); break;
             case 'ret':
                 this.ip = this.retAddr;
                 this.frames.pop();
