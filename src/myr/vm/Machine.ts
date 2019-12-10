@@ -1,32 +1,31 @@
 import { AbstractMachine } from "./AbstractMachine";
 import { Algebra } from "./Algebra";
 import { DB } from "./DB";
-import { SimpleDB } from "./SimpleDB";
 
-export default class Machine<T extends number | boolean | string> extends AbstractMachine<T, string> {
-    stack: Array<T> = [];
-    db: DB<T, string> = new SimpleDB<T>();
+export type Value = string | boolean | number
+export default class Machine extends AbstractMachine {
+    stack: Array<Value> = [];
 
-    constructor(private algebra: Algebra<T>) { //}, private db: DB<T, string>) {
+    constructor(private algebra: Algebra) { //}, private db: DB<T, string>) {
         super();
     }
 
     get stackTop() { return this.stack[this.stack.length - 1]; }
-    get topTwo(): [T,T] { 
+    get topTwo(): [Value, Value] { 
         return [
             this.stack[this.stack.length - 1],
             this.stack[this.stack.length - 2]
         ];
     }
 
-    topN(arity: number): T[] {
+    topN(arity: number): Value[] {
         return this.stack.slice(this.stack.length - arity);
         // throw new Error("Method not implemented.");
     }
 
-    topIsZero() { return this.algebra.isZero(this.stackTop); }
+    topIsZero() { return this.algebra.isZero(this.stackTop as number); }
 
-    peek(): T {
+    peek(): Value {
         if (this.stackTop !== null) {
             return this.stackTop;
         } else {
@@ -34,7 +33,8 @@ export default class Machine<T extends number | boolean | string> extends Abstra
         }
     }
 
-    push(value: T): void {
+    push(value: Value): void {
+        // console.log("Machine#push", { value })
         this.stack.push(value);
     }
 
@@ -61,18 +61,18 @@ export default class Machine<T extends number | boolean | string> extends Abstra
         let second = this.stackTop;
         this.stack.pop()
         // let [a,b] = this.topTwo;
-        let result: number = this.algebra.compare(second, top);
-        this.stack.push(result as T);
+        let result: number = this.algebra.compare(second as number, top as number);
+        this.stack.push(result as Value);
     }
 
     decrement() {
-        let top = this.stackTop;
+        let top = this.stackTop as number;
         this.stack.pop();
         this.stack.push(this.algebra.decrement(top));
     }
 
     increment() {
-        let top = this.stackTop;
+        let top = this.stackTop as number;
         this.stack.pop();
         this.stack.push(this.algebra.increment(top));
     }
@@ -97,26 +97,51 @@ export default class Machine<T extends number | boolean | string> extends Abstra
         this.binaryOp(this.algebra.power)
     }
 
-    store(key: string, db: DB<T, string>): void {
+    store(key: string, db: DB): void {
         let top = this.peek();
-        if (top) {
+        if (top !== undefined) {
             db.put(key, top)
         } else {
             throw new Error("Called #store on an empty stack.");
         }
     }
 
-    load(key: string, db: DB<T, string>): void {
+    load(key: string, db: DB): void {
         this.push(db.get(key));
     }
 
-    private binaryOp(fn: (left: T, right: T) => T): void {
-        let [right, left] = this.topTwo;
-        if (left && right) {
+    and() {
+        return this.binaryOpLog(this.algebra.and);
+    }
+
+    or() {
+        return this.binaryOpLog(this.algebra.or);
+    }
+
+    not() {
+        let result = this.algebra.not(this.stackTop as boolean);
+        this.stack.pop();
+        this.push(result);
+    }
+
+    private binaryOp(fn: (left: number, right: number) => number): void {
+        let [right, left] = this.topTwo as [number, number];
+        if (left !== undefined && right !== undefined) {
             let result = fn(left, right)
             this.stack.pop();
             this.stack.pop();
-            // console.debug("[Machine.binaryOp]", { fn: fn.name, left, right, result })
+            this.push(result);
+        } else {
+            throw new Error("Must have at least two items to perform binary operations?")
+        }
+    }
+
+    private binaryOpLog(fn: (left: boolean, right: boolean) => boolean): void {
+        let [right, left] = this.topTwo as [boolean,boolean];
+        if (left !== undefined && right !== undefined) {
+            let result = fn(left, right)
+            this.stack.pop();
+            this.stack.pop();
             this.push(result);
         } else {
             throw new Error("Must have at least two items to perform binary operations?")

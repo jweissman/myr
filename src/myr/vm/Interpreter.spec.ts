@@ -1,25 +1,207 @@
 import Interpreter from "./Interpreter"
 import { SimpleAlgebra } from "./SimpleAlgebra";
-import { instruct, AbstractASTNode } from "./Instruction";
+import { instruct } from "./Instruction";
 
 describe(Interpreter, () => {
-    let interpreter: Interpreter<number>;
+    let interpreter: Interpreter;
 
     beforeEach(() => {
         let algebra = new SimpleAlgebra();
-        interpreter = new Interpreter<number>(algebra);
+        interpreter = new Interpreter(algebra);
     })
 
-    describe('executes instructions', () => {
-        it('swaps the top two elements of the stack', () => {
+    it('swaps the top two elements of the stack', () => {
+        interpreter.run([
+            instruct('push', { value: 10 }),
+            instruct('push', { value: 20 }),
+            instruct('swap'),
+        ])
+        expect(interpreter.result).toEqual(10)
+    })
+
+    it('saves and loads', () => {
+        interpreter.run([
+            instruct('push', { value: 9 }),
+            instruct('store', { key: 'hello' }),
+            instruct('pop'),
+            instruct('load', { key: 'hello' }),
+        ])
+        expect(interpreter.result).toEqual(9)
+    });
+
+    describe('compares values', () => {
+        it('cmp', () => {
+            interpreter.run([
+                instruct('push', { value: 1 }),
+                instruct('push', { value: 0 }),
+                instruct('cmp'),
+            ])
+            expect(interpreter.result).toEqual(1)
+
+            interpreter.run([
+                instruct('push', { value: 0 }),
+                instruct('push', { value: 1 }),
+                instruct('cmp'),
+            ])
+            expect(interpreter.result).toEqual(-1)
+
+            interpreter.run([
+                instruct('push', { value: 1 }),
+                instruct('push', { value: 1 }),
+                instruct('cmp'),
+            ])
+            expect(interpreter.result).toEqual(0)
+        })
+
+        it('cmp_gt', () => {
             interpreter.run([
                 instruct('push', { value: 10 }),
                 instruct('push', { value: 20 }),
-                instruct('swap'),
+                instruct('cmp_gt')
             ])
-            expect(interpreter.result).toEqual(10)
+            expect(interpreter.result).toEqual(false)
+
+            interpreter.run([
+                instruct('push', { value: 20 }),
+                instruct('push', { value: 10 }),
+                instruct('cmp_gt')
+            ])
+            expect(interpreter.result).toEqual(true)
+
+            interpreter.run([
+                instruct('push', { value: 20 }),
+                instruct('push', { value: 20 }),
+                instruct('cmp_gt')
+            ])
+            expect(interpreter.result).toEqual(false)
         })
 
+        it('cmp_lt', () => {
+            interpreter.run([
+                instruct('push', { value: 10 }),
+                instruct('push', { value: 20 }),
+                instruct('cmp_lt')
+            ])
+            expect(interpreter.result).toEqual(true)
+
+            interpreter.run([
+                instruct('push', { value: 20 }),
+                instruct('push', { value: 10 }),
+                instruct('cmp_lt')
+            ])
+            expect(interpreter.result).toEqual(false)
+
+            interpreter.run([
+                instruct('push', { value: 20 }),
+                instruct('push', { value: 20 }),
+                instruct('cmp_lt')
+            ])
+            expect(interpreter.result).toEqual(false)
+        })
+
+        it('cmp_eq', () => {
+            interpreter.run([
+                instruct('push', { value: 10 }),
+                instruct('push', { value: 20 }),
+                instruct('cmp_eq')
+            ])
+            expect(interpreter.result).toEqual(false)
+
+            interpreter.run([
+                instruct('push', { value: 20 }),
+                instruct('push', { value: 10 }),
+                instruct('cmp_eq')
+            ])
+            expect(interpreter.result).toEqual(false)
+
+            interpreter.run([
+                instruct('push', { value: 20 }),
+                instruct('push', { value: 20 }),
+                instruct('cmp_eq')
+            ])
+            expect(interpreter.result).toEqual(true)
+        })
+    })
+
+    describe('boolean algebra', () => {
+        it('and', () => {
+            interpreter.run([
+                instruct('push', { value: true }),
+                instruct('push', { value: true }),
+                instruct('and'),
+            ])
+            expect(interpreter.result).toEqual(true)
+
+            interpreter.run([
+                instruct('push', { value: true }),
+                instruct('push', { value: false }),
+                instruct('and'),
+            ])
+            expect(interpreter.result).toEqual(false)
+
+            interpreter.run([
+                instruct('push', { value: false }),
+                instruct('push', { value: true }),
+                instruct('and'),
+            ])
+            expect(interpreter.result).toEqual(false)
+
+            interpreter.run([
+                instruct('push', { value: false }),
+                instruct('push', { value: false }),
+                instruct('and'),
+            ])
+            expect(interpreter.result).toEqual(false)
+        })
+
+        it('or', () => {
+            interpreter.run([
+                instruct('push', { value: true }),
+                instruct('push', { value: true }),
+                instruct('or'),
+            ])
+            expect(interpreter.result).toEqual(true)
+
+            interpreter.run([
+                instruct('push', { value: true }),
+                instruct('push', { value: false }),
+                instruct('or'),
+            ])
+            expect(interpreter.result).toEqual(true)
+
+            interpreter.run([
+                instruct('push', { value: false }),
+                instruct('push', { value: true }),
+                instruct('or'),
+            ])
+            expect(interpreter.result).toEqual(true)
+
+            interpreter.run([
+                instruct('push', { value: false }),
+                instruct('push', { value: false }),
+                instruct('or'),
+            ])
+            expect(interpreter.result).toEqual(false)
+        })
+
+        it('not', () => {
+            interpreter.run([
+                instruct('push', { value: true }),
+                instruct('not'),
+            ])
+            expect(interpreter.result).toEqual(false)
+
+            interpreter.run([
+                instruct('push', { value: false }),
+                instruct('not'),
+            ])
+            expect(interpreter.result).toEqual(true)
+        });
+
+
+    })
+
+    describe('arithmetic', () => {
         it('decrements values', () => {
             interpreter.run([
                 instruct('push', { value: 10 }),
@@ -71,111 +253,6 @@ describe(Interpreter, () => {
             ])
             expect(interpreter.result).toEqual(4)
         });
-
-        it('saves and loads', () => {
-            interpreter.run([
-                instruct('push', { value: 9 }),
-                instruct('store', { key: 'hello' }),
-                instruct('pop'),
-                instruct('load', { key: 'hello' }),
-            ])
-            expect(interpreter.result).toEqual(9)
-        });
-
-        describe('compares values', () => {
-            it('cmp', () => {
-                interpreter.run([
-                    instruct('push', { value: 1 }),
-                    instruct('push', { value: 0 }),
-                    instruct('cmp'),
-                ])
-                expect(interpreter.result).toEqual(1)
-
-                interpreter.run([
-                    instruct('push', { value: 0 }),
-                    instruct('push', { value: 1 }),
-                    instruct('cmp'),
-                ])
-                expect(interpreter.result).toEqual(-1)
-
-                interpreter.run([
-                    instruct('push', { value: 1 }),
-                    instruct('push', { value: 1 }),
-                    instruct('cmp'),
-                ])
-                expect(interpreter.result).toEqual(0)
-            })
-
-            it('cmp_gt', () => {
-                interpreter.run([
-                    instruct('push', { value: 10 }),
-                    instruct('push', { value: 20 }),
-                    instruct('cmp_gt')
-                ])
-                expect(interpreter.result).toEqual(false)
-
-                interpreter.run([
-                    instruct('push', { value: 20 }),
-                    instruct('push', { value: 10 }),
-                    instruct('cmp_gt')
-                ])
-                expect(interpreter.result).toEqual(true)
-
-                interpreter.run([
-                    instruct('push', { value: 20 }),
-                    instruct('push', { value: 20 }),
-                    instruct('cmp_gt')
-                ])
-                expect(interpreter.result).toEqual(false)
-            })
-
-            it('cmp_lt', () => {
-                interpreter.run([
-                    instruct('push', { value: 10 }),
-                    instruct('push', { value: 20 }),
-                    instruct('cmp_lt')
-                ])
-                expect(interpreter.result).toEqual(true)
-
-                interpreter.run([
-                    instruct('push', { value: 20 }),
-                    instruct('push', { value: 10 }),
-                    instruct('cmp_lt')
-                ])
-                expect(interpreter.result).toEqual(false)
-
-                interpreter.run([
-                    instruct('push', { value: 20 }),
-                    instruct('push', { value: 20 }),
-                    instruct('cmp_lt')
-                ])
-                expect(interpreter.result).toEqual(false)
-            })
-
-            it('cmp_eq', () => {
-                interpreter.run([
-                    instruct('push', { value: 10 }),
-                    instruct('push', { value: 20 }),
-                    instruct('cmp_eq')
-                ])
-                expect(interpreter.result).toEqual(false)
-
-                interpreter.run([
-                    instruct('push', { value: 20 }),
-                    instruct('push', { value: 10 }),
-                    instruct('cmp_eq')
-                ])
-                expect(interpreter.result).toEqual(false)
-
-                interpreter.run([
-                    instruct('push', { value: 20 }),
-                    instruct('push', { value: 20 }),
-                    instruct('cmp_eq')
-                ])
-                expect(interpreter.result).toEqual(true)
-            })
-
-        })
     })
 
     it('unconditional jumps', () => {
@@ -245,34 +322,34 @@ describe(Interpreter, () => {
 
     // test.todo
     xit('compiles lambdas dynamically', () => {
-        class Defun extends AbstractASTNode {
-            constructor(public params: string[], public body: AbstractASTNode) {
-                super();
-            }
-        }
-        class Funcall extends AbstractASTNode {
-            constructor(public name: string, public args: AbstractASTNode[]) {
-                super();
-            }
-        }
-        class Ident extends AbstractASTNode {
-            constructor(public name: string) { super(); }
-        }
+        // class Defun extends AbstractASTNode {
+        //     constructor(public params: string[], public body: AbstractASTNode) {
+        //         super();
+        //     }
+        // }
+        // class Funcall extends AbstractASTNode {
+        //     constructor(public name: string, public args: AbstractASTNode[]) {
+        //         super();
+        //     }
+        // }
+        // class Ident extends AbstractASTNode {
+        //     constructor(public name: string) { super(); }
+        // }
 
         // twice = (f) => (x) => f(f(x))
-        interpreter.run([
-            instruct('compile', {
-                args: ['f'],
-                body: new Defun(
-                    ['x'],
-                    new Funcall('f',
-                        [new Funcall('f',
-                            [new Ident('x')]
-                        )]
-                    )
-                )
-            })
-        ])
+        // interpreter.run([
+        //     instruct('compile', {
+        //         args: ['f'],
+        //         body: new Defun(
+        //             ['x'],
+        //             new Funcall('f',
+        //                 [new Funcall('f',
+        //                     [new Ident('x')]
+        //                 )]
+        //             )
+        //         )
+        //     })
+        // ])
         // expect that we have new code for this function...
     })
 
@@ -319,19 +396,19 @@ describe(Interpreter, () => {
             instruct('noop', { label: 'loop' }),
             instruct('load', { key: 'n' }),
             instruct('dec'),
-            instruct('jump_if_zero', { target: 'done'}),
+            instruct('jump_if_zero', { target: 'done' }),
             instruct('store', { key: 'n' }),
             instruct('pop'),
-            instruct('load', { key: 'multiplier'}),
-            instruct('load', { key: 'acc'}),
+            instruct('load', { key: 'multiplier' }),
+            instruct('load', { key: 'acc' }),
             instruct('add'),
             instruct('store', { key: 'acc' }),
             instruct('pop'),
-            instruct('jump', { target: 'loop'}),
+            instruct('jump', { target: 'loop' }),
             instruct('noop', { label: 'done' }),
             instruct('load', { key: 'acc' }),
             instruct('ret'),
-            instruct('noop', { label: 'main' } ),
+            instruct('noop', { label: 'main' }),
             instruct('push', { value: 12 }),
             instruct('push', { value: 24 }),
             instruct('call', { target: 'multiply' }),

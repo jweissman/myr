@@ -1,9 +1,9 @@
 import { DB } from "./DB";
 
-export abstract class AbstractMachine<T extends number | boolean | string, ID> {
-    abstract push(value: T): void;
+export abstract class AbstractMachine {
+    abstract push(value: number | string | boolean): void;
     abstract pop(): void;
-    abstract peek(): T | undefined;
+    abstract peek(): number | string | boolean | undefined;
 
     abstract decrement(): void;
     abstract add(): void;
@@ -15,6 +15,6 @@ export abstract class AbstractMachine<T extends number | boolean | string, ID> {
     abstract swap(): void;
     abstract compare(): void;
 
-    abstract store(key: ID, db: DB<T, ID>): void;
-    abstract load(key: ID, db: DB<T, ID>): void;
+    abstract store(key: string, db: DB): void;
+    abstract load(key: string, db: DB): void;
 }

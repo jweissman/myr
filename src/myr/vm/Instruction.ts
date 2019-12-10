@@ -1,16 +1,13 @@
 import chalk from 'chalk';
 import { OpCode } from "./OpCode";
+import { Value } from './Machine';
 
-// type AST = ASTNode;
-export class AbstractASTNode {
-}
-
-type Instruction<T, N extends AbstractASTNode> = {
+export type Instruction = {
     op: OpCode;
 
     // sparse little dict
     key?: string;     // key to store/load
-    value?: T;        // value to push
+    value?: Value;        // value to push
     label?: string;   // label at this instruction
     target?: string;  // jump/call target
 
@@ -20,7 +17,7 @@ type Instruction<T, N extends AbstractASTNode> = {
 
     // for compile...
     args?: string[];
-    body?: N;
+    body?: any[];
 };
 
 export function instruct<T>(
@@ -31,7 +28,7 @@ export function instruct<T>(
 }
 
 let pad = 12;
-export function prettyInstruction<T>(inst: Instruction<T>) {
+export function prettyInstruction<T, N>(inst: Instruction) {
     let arg = inst.value || inst.key || inst.target 
     let result;
     if (arg && !(arg === undefined)) {
@@ -45,10 +42,10 @@ export function prettyInstruction<T>(inst: Instruction<T>) {
     return chalk.blueBright(result);
 }
 
-export function prettyProgram<T>(prog: Instruction<T>[]) {
+export function prettyProgram<T,N>(prog: Instruction[]) {
     return prog.map((instruction, index) =>
         String(index).padEnd(4) + prettyInstruction(instruction)
     ).join("\n")
 }
 
-export default Instruction;
+// export type Instruction;

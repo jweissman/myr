@@ -1,6 +1,6 @@
-export abstract class DB<T, ID> {
-    abstract get(key: ID): T;
-    abstract put(key: ID, value: T): void;
+export abstract class DB {
+    abstract get(key: string): any;
+    abstract put(key: string, value: any): void;
 
     // add/remove frames...?
     // abstract push(): void;

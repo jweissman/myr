@@ -1,11 +1,19 @@
-export abstract class Algebra<T> {
-    abstract isZero(x: T): boolean;
-    abstract decrement(x: T): T;
-    abstract increment(x: T): T;
-    abstract sum(x: T, y: T): T;
-    abstract difference(x: T, y: T): T;
-    abstract product(x: T, y: T): T;
-    abstract quotient(x: T, y: T): T;
-    abstract power(x: T, y: T): T;
-    abstract compare(x: T, y: T): -1 | 0 | 1;
+export type Comparison = -1 | 0 | 1
+export abstract class Algebra {
+    abstract isZero(x: number): boolean;
+
+    abstract decrement(x: number): number;
+    abstract increment(x: number): number;
+
+    abstract sum(x: number, y: number): number;
+    abstract difference(x: number, y: number): number;
+    abstract product(x: number, y: number): number;
+    abstract quotient(x: number, y: number): number;
+    abstract power(x: number, y: number): number;
+
+    abstract compare(x: number, y: number): Comparison;
+
+    abstract and(x: boolean, y: boolean): boolean;
+    abstract or(x: boolean, y: boolean): boolean;
+    abstract not(x: boolean): boolean;
 }

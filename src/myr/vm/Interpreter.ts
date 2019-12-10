@@ -1,19 +1,22 @@
 import assertNever from 'assert-never';
-import Machine from "./Machine";
+import Machine, { Value } from "./Machine";
 import { Algebra } from "./Algebra";
-import Instruction, { prettyInstruction, prettyProgram } from "./Instruction";
+import { prettyInstruction, prettyProgram, Instruction } from "./Instruction";
 import { DB } from './DB';
 import { SimpleDB } from './SimpleDB';
+import { OpCode } from './OpCode';
 
-type Frame<T> = { retAddr: number, db: DB<T, string> }
+const average = (arr: number[]) => arr.reduce((a,b) => a + b, 0) / arr.length
 
-class Interpreter<T extends number | boolean | string> {
+type Frame = { retAddr: number, db: DB }
+
+class Interpreter {
     private trace: boolean = false;
 
-    public machine: Machine<T>;
+    public machine: Machine;
 
     private ip: number = -1;
-    private frames: Frame<T>[] = [{ retAddr: -1, db: new SimpleDB() }]
+    private frames: Frame[] = [{ retAddr: -1, db: new SimpleDB() }]
 
     private get topFrame() { return this.frames[this.frames.length-1]; }
 
@@ -21,33 +24,51 @@ class Interpreter<T extends number | boolean | string> {
         return this.topFrame.retAddr;
     }
 
-    private get db(): DB<T, string> {
+    public get db(): DB {
         return this.topFrame.db;
     }
 
-    private currentProgram: Instruction<T>[] = [];
+    private currentProgram: Instruction[] = [];
 
-    constructor(algebra: Algebra<T>) {
-        this.machine = new Machine<T>(algebra);
+    constructor(algebra: Algebra) {
+        this.machine = new Machine(algebra);
     }
 
-    run(program: Instruction<T>[]) {
+    run(program: Instruction[]) {
+        let startTime = new Date().getTime();
         this.currentProgram = program; 
         this.ip = this.indexForLabel("main") || 0;
-        console.debug('\n---\n'+prettyProgram(program)+'\n---\n');
+        // console.debug('\n---\n'+prettyProgram(program)+'\n---\n');
         let maxSteps = 1024 * 1024; // halt if we ran away :D
         let steps = 0;
+        let stackLengths = []
         while (this.ip < this.currentProgram.length && steps++ < maxSteps) {
             let instruction = this.currentInstruction;
             if (this.trace) {
                 console.log(
                     `@${this.ip}: ` +
-                    prettyInstruction(instruction) +
-                    " (stack: " + this.machine.stack + ")"
-                );
+                    prettyInstruction(instruction)
+                    );
+            }
+
+            if (this.trace && this.machine.stack.length) {
+                console.log(" (stack before: " + this.machine.stack + ")");
             }
             this.execute(instruction);
+            // if (this.trace) {
+            if (this.trace && this.machine.stack.length) {
+                console.log(
+                    " (stack after: " + this.machine.stack + ")"
+                );
+            }
             this.ip++;
+            stackLengths.push(this.machine.stack.length)
+        }
+        let endTime = new Date().getTime();
+        let elapsed = endTime - startTime;
+        if (this.trace) {
+        console.log(`---> Ran ${steps} instructions in ${elapsed}ms: ${steps / elapsed} ops/ms`)
+        console.log(`---> Avg stack size: ${average(stackLengths)}`)
         }
     }
 
@@ -55,7 +76,7 @@ class Interpreter<T extends number | boolean | string> {
 
     get result() { return this.machine.peek(); }
 
-    private push(value: T | undefined) {
+    private push(value: Value | undefined) {
         if (value !== undefined) {
             this.machine.push(value);
         } else {
@@ -64,7 +85,7 @@ class Interpreter<T extends number | boolean | string> {
     }
 
     private store(key: string | undefined) {
-        if (key) {
+        if (key !== undefined) {
             this.machine.store(key, this.db);
         } else {
             throw new Error("Must have a key to reference stored variable by")
@@ -92,7 +113,7 @@ class Interpreter<T extends number | boolean | string> {
         };
     }
 
-    private jump_gt(value: T | undefined, target: string | undefined) {
+    private jump_gt(value: Value | undefined, target: string | undefined) {
         if (value && target) {
             this.machine.push(value);
             this.machine.compare();
@@ -116,8 +137,8 @@ class Interpreter<T extends number | boolean | string> {
         }
     }
 
-    private execute(instruction: Instruction<T>) {
-        let { op } = instruction;
+    private execute(instruction: Instruction) {
+        let op: OpCode = instruction.op;
         switch (op) {
             case 'noop': break;
             case 'push':  this.push(instruction.value); break;
@@ -133,24 +154,27 @@ class Interpreter<T extends number | boolean | string> {
             case 'mul':   this.machine.multiply(); break;
             case 'div':   this.machine.divide(); break;
             case 'pow':   this.machine.exponentiate(); break;
+            case 'and':   this.machine.and(); break;
+            case 'or':    this.machine.or(); break;
+            case 'not':   this.machine.not(); break;
             case 'cmp':   this.machine.compare(); break;
             case 'cmp_gt': 
                 this.machine.compare();
                 let gt: boolean = this.machine.peek() === 1;
                 this.machine.pop();
-                this.push(gt as T);
+                this.push(gt);
                 break;
             case 'cmp_lt': 
                 this.machine.compare();
                 let lt: boolean = this.machine.peek() === -1;
                 this.machine.pop();
-                this.push(lt as T);
+                this.push(lt);
                 break;
             case 'cmp_eq': 
                 this.machine.compare();
                 let eq: boolean = this.machine.peek() === 0;
                 this.machine.pop();
-                this.push(eq as T);
+                this.push(eq);
                 break;
             case 'store': this.store(instruction.key); break;
             case 'load':  this.load(instruction.key); break;

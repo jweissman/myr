@@ -4,6 +4,10 @@ export type OpCode = 'push'
                    | 'dup'
                    | 'noop' 
 
+                   | 'and'
+                   | 'or'
+                   | 'not'
+
                    | 'inc'
                    | 'dec'
                    | 'add'

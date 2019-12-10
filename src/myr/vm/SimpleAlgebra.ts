@@ -1,6 +1,18 @@
 import { Algebra } from "./Algebra";
 
-export class SimpleAlgebra extends Algebra<number> {
+export class SimpleAlgebra extends Algebra {
+    and(x: boolean, y: boolean): boolean {
+        return x && y;
+    }
+
+    or(x: boolean, y: boolean): boolean {
+        return x || y;
+    }
+
+    not(x: boolean): boolean {
+        return !x;
+    }
+
     isZero(x: number): boolean {
         return x === 0;
     }
