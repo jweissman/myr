@@ -3,7 +3,7 @@ import { Algebra } from "./Algebra";
 import { SimpleAlgebra } from "./SimpleAlgebra";
 import { SimpleDB } from "./SimpleDB";
 import { DB } from "./DB";
-import { MyrObject, MyrNumeric } from "./AbstractMachine";
+import { MyrObject, MyrNumeric, MyrArray, MyrString } from "./AbstractMachine";
 
 describe(Machine, () => {
     let machine: Machine;
@@ -94,5 +94,47 @@ describe(Machine, () => {
         machine.load('hello', db)
         machine.peek()
         expect(machine.peek()).toEqual(new MyrNumeric(123))
+    })
+
+    it('array assembly', () => {
+        machine.push(new MyrArray([]))
+        machine.push(new MyrNumeric(0)) // index
+        machine.push(new MyrString("hello")) // value
+        machine.arrayPut();
+
+        // new array is now at top of stack
+        machine.push(new MyrNumeric(1)) // index
+        machine.push(new MyrString("world")) // value
+        machine.arrayPut();
+        // target array / index / value to put AT the index :)
+
+        // machine.arrayPut()
+        expect(machine.peek()).toEqual(new MyrArray([
+            new MyrString("hello"),
+            new MyrString("world"),
+        ]))
+    })
+
+    it('array index', () => {
+        let array = new MyrArray([
+            new MyrString("hello"),
+            new MyrString("there"),
+            new MyrString("world")
+        ])
+
+        machine.push(array)
+        machine.push(new MyrNumeric(0))
+        machine.arrayGet();
+        expect(machine.peek()).toEqual(new MyrString("hello"))
+
+        machine.push(array);
+        machine.push(new MyrNumeric(1))
+        machine.arrayGet();
+        expect(machine.peek()).toEqual(new MyrString("there"))
+
+        machine.push(array);
+        machine.push(new MyrNumeric(2))
+        machine.arrayGet();
+        expect(machine.peek()).toEqual(new MyrString("world"))
     })
 })

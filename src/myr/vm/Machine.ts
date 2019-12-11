@@ -1,4 +1,4 @@
-import { AbstractMachine, Value, MyrNumeric, MyrBoolean } from "./AbstractMachine";
+import { AbstractMachine, Value, MyrNumeric, MyrBoolean, MyrArray } from "./AbstractMachine";
 import { Algebra } from "./Algebra";
 import { DB } from "./DB";
 
@@ -124,6 +124,32 @@ export default class Machine extends AbstractMachine {
         let result = this.algebra.not((this.stackTop as MyrBoolean).value);
         this.stack.pop();
         this.push(new MyrBoolean(result));
+    }
+
+    arrayPut() {
+        // console.log("ARRAY PUT", { stack: this.stack })
+        let valueToPush = this.stackTop;
+        this.stack.pop();
+        let indexToAssign = this.stackTop as MyrNumeric;
+        this.stack.pop();
+        let theArray = this.stackTop as MyrArray;
+        this.stack.pop();
+        // console.log("ARRAY PUT", { valueToPush, indexToAssign, theArray })
+        theArray.elements[indexToAssign.value] = valueToPush;
+        this.stack.push(theArray);
+    }
+
+    arrayGet(): void {
+        let indexToRetrieve = this.stackTop as MyrNumeric;
+        this.stack.pop();
+        let theArray = this.stackTop as MyrArray;
+        this.stack.pop();
+        let retrieved = theArray.elements[indexToRetrieve.value];
+        if (retrieved !== undefined) {
+            this.stack.push(retrieved);
+        } else {
+            throw new Error("array index out of bounds")
+        }
     }
 
     private binaryOp(fn: (left: number, right: number) => number): void {

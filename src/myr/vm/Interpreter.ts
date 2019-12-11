@@ -6,6 +6,7 @@ import { DB } from './DB';
 import { SimpleDB } from './SimpleDB';
 import { OpCode } from './OpCode';
 import { Value, MyrNumeric, MyrFunction, MyrBoolean } from './AbstractMachine';
+import { MyrNil } from '../../..';
 
 const average = (arr: number[]) => arr.reduce((a,b) => a + b, 0) / arr.length
 
@@ -69,7 +70,7 @@ class Interpreter<T> {
             this.execute(instruction);
             if (this.trace && this.machine.stack.length) {
                 console.log(
-                    " (stack after: " + this.machine.stack + ")"
+                    " (stack after: " + this.machine.stack.map(elem => elem.toJS()) + ")"
                 );
             }
             this.ip++;
@@ -78,7 +79,7 @@ class Interpreter<T> {
         let endTime = new Date().getTime();
         let elapsed = endTime - startTime;
         // if (this.trace) {
-        if (elapsed > 0) {
+        if (elapsed > 10) {
             console.log(`---> Ran ${steps} instructions in ${elapsed}ms: ${steps / elapsed} ops/ms`)
         }
         // console.log(`---> Avg stack size: ${average(stackLengths)}`)
@@ -91,8 +92,10 @@ class Interpreter<T> {
         let value = this.machine.peek();
         if (value !== undefined) {
             this.machine.pop();
+            return value.toJS();
+        } else {
+            return null;
         }
-        return value.toJS();
     }
 
     private push(value: Value | undefined) {
@@ -115,6 +118,7 @@ class Interpreter<T> {
         if (key) {
             this.machine.load(key, this.db);
         } else {
+            debugger;
             throw new Error("Must have a key to reference loaded variable by")
         }
     }
@@ -266,6 +270,8 @@ class Interpreter<T> {
             case 'halt':
                 this.ip = this.currentProgram.length;
                 break;
+            case 'arr_get': this.machine.arrayGet(); break;
+            case 'arr_put': this.machine.arrayPut(); break;
             default: assertNever(op);
         }
     }

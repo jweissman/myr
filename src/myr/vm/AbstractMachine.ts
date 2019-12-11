@@ -27,6 +27,18 @@ export class MyrNil extends MyrObject {
     toJS(): null { return null; }
 }
 
+export class MyrArray extends MyrObject {
+    constructor(public elements: MyrObject[] = []) {
+        super();
+    } 
+    toJS() {
+        return this.elements.map(elem => elem.toJS());
+    }
+}
+
+// class MyrHash
+// class MyrClass 
+
 export type Value = MyrObject
 
 export abstract class AbstractMachine {
@@ -46,4 +58,7 @@ export abstract class AbstractMachine {
 
     abstract store(key: string, db: DB): void;
     abstract load(key: string, db: DB): void;
+
+    abstract arrayPut(): void;
+    abstract arrayGet(): void;
 }

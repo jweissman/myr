@@ -19,6 +19,9 @@ export type OpCode = 'push'
                    | 'store' 
                    | 'load'
 
+                   | 'arr_get'
+                   | 'arr_put'
+
                    | 'cmp'
                    | 'cmp_gt'
                    | 'cmp_lt'
