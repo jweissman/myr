@@ -35,7 +35,7 @@ export function instruct(
 
 let pad = 12;
 export function prettyInstruction(inst: Instruction) {
-    let arg = inst.value || inst.key || inst.target 
+    let arg = (inst.value && inst.value.toJS()) || inst.key || inst.target 
     let result;
     if (arg && !(arg === undefined)) {
         result = `${inst.op}(${(arg)})`.padEnd(pad);
@@ -43,9 +43,13 @@ export function prettyInstruction(inst: Instruction) {
         result = String(inst.op).padEnd(pad);
     }
     if (inst.label) {
-        return chalk.blueBright(result) + chalk.gray('#' + inst.label)
+        if (inst.op === 'noop') {
+            return `.${inst.label}:`
+        } else {
+            return "  " + chalk.blueBright(result) + chalk.gray('#' + inst.label)
+        }
     }
-    return chalk.blueBright(result);
+    return "  " + chalk.blueBright(result);
 }
 
 export function prettyProgram(prog: Instruction[]) {

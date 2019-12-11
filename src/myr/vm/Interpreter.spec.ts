@@ -2,6 +2,7 @@ import Interpreter, { Compiler } from "./Interpreter"
 import { SimpleAlgebra } from "./SimpleAlgebra";
 import { instruct, Instruction } from "./Instruction";
 import assertNever from "assert-never";
+import { MyrNumeric, MyrBoolean } from "./AbstractMachine";
 
 // support compile spec
 abstract class AbstractASTNode { abstract get gen(): Instruction[] }
@@ -45,8 +46,8 @@ describe(Interpreter, () => {
 
     it('swaps the top two elements of the stack', () => {
         interpreter.run([
-            instruct('push', { value: 10 }),
-            instruct('push', { value: 20 }),
+            instruct('push', { value: new MyrNumeric(10) }),
+            instruct('push', { value: new MyrNumeric(20) }),
             instruct('swap'),
         ])
         expect(interpreter.result).toEqual(10)
@@ -54,7 +55,7 @@ describe(Interpreter, () => {
 
     it('saves and loads', () => {
         interpreter.run([
-            instruct('push', { value: 9 }),
+            instruct('push', { value: new MyrNumeric(9) }),
             instruct('store', { key: 'hello' }),
             instruct('pop'),
             instruct('load', { key: 'hello' }),
@@ -65,22 +66,22 @@ describe(Interpreter, () => {
     describe('compares values', () => {
         it('cmp', () => {
             interpreter.run([
-                instruct('push', { value: 1 }),
-                instruct('push', { value: 0 }),
+                instruct('push', { value: new MyrNumeric(1) }),
+                instruct('push', { value: new MyrNumeric(0) }),
                 instruct('cmp'),
             ])
             expect(interpreter.result).toEqual(1)
 
             interpreter.run([
-                instruct('push', { value: 0 }),
-                instruct('push', { value: 1 }),
+                instruct('push', { value: new MyrNumeric(0) }),
+                instruct('push', { value: new MyrNumeric(1) }),
                 instruct('cmp'),
             ])
             expect(interpreter.result).toEqual(-1)
 
             interpreter.run([
-                instruct('push', { value: 1 }),
-                instruct('push', { value: 1 }),
+                instruct('push', { value: new MyrNumeric(1) }),
+                instruct('push', { value: new MyrNumeric(1) }),
                 instruct('cmp'),
             ])
             expect(interpreter.result).toEqual(0)
@@ -88,22 +89,22 @@ describe(Interpreter, () => {
 
         it('cmp_gt', () => {
             interpreter.run([
-                instruct('push', { value: 10 }),
-                instruct('push', { value: 20 }),
+                instruct('push', { value: new MyrNumeric(10) }),
+                instruct('push', { value: new MyrNumeric(20) }),
                 instruct('cmp_gt')
             ])
             expect(interpreter.result).toEqual(false)
 
             interpreter.run([
-                instruct('push', { value: 20 }),
-                instruct('push', { value: 10 }),
+                instruct('push', { value: new MyrNumeric(20) }),
+                instruct('push', { value: new MyrNumeric(10) }),
                 instruct('cmp_gt')
             ])
             expect(interpreter.result).toEqual(true)
 
             interpreter.run([
-                instruct('push', { value: 20 }),
-                instruct('push', { value: 20 }),
+                instruct('push', { value: new MyrNumeric(20) }),
+                instruct('push', { value: new MyrNumeric(20) }),
                 instruct('cmp_gt')
             ])
             expect(interpreter.result).toEqual(false)
@@ -111,22 +112,22 @@ describe(Interpreter, () => {
 
         it('cmp_lt', () => {
             interpreter.run([
-                instruct('push', { value: 10 }),
-                instruct('push', { value: 20 }),
+                instruct('push', { value: new MyrNumeric(10) }),
+                instruct('push', { value: new MyrNumeric(20) }),
                 instruct('cmp_lt')
             ])
             expect(interpreter.result).toEqual(true)
 
             interpreter.run([
-                instruct('push', { value: 20 }),
-                instruct('push', { value: 10 }),
+                instruct('push', { value: new MyrNumeric(20) }),
+                instruct('push', { value: new MyrNumeric(10) }),
                 instruct('cmp_lt')
             ])
             expect(interpreter.result).toEqual(false)
 
             interpreter.run([
-                instruct('push', { value: 20 }),
-                instruct('push', { value: 20 }),
+                instruct('push', { value: new MyrNumeric(20) }),
+                instruct('push', { value: new MyrNumeric(20) }),
                 instruct('cmp_lt')
             ])
             expect(interpreter.result).toEqual(false)
@@ -134,22 +135,22 @@ describe(Interpreter, () => {
 
         it('cmp_eq', () => {
             interpreter.run([
-                instruct('push', { value: 10 }),
-                instruct('push', { value: 20 }),
+                instruct('push', { value: new MyrNumeric(10) }),
+                instruct('push', { value: new MyrNumeric(20) }),
                 instruct('cmp_eq')
             ])
             expect(interpreter.result).toEqual(false)
 
             interpreter.run([
-                instruct('push', { value: 20 }),
-                instruct('push', { value: 10 }),
+                instruct('push', { value: new MyrNumeric(20) }),
+                instruct('push', { value: new MyrNumeric(10) }),
                 instruct('cmp_eq')
             ])
             expect(interpreter.result).toEqual(false)
 
             interpreter.run([
-                instruct('push', { value: 20 }),
-                instruct('push', { value: 20 }),
+                instruct('push', { value: new MyrNumeric(20) }),
+                instruct('push', { value: new MyrNumeric(20) }),
                 instruct('cmp_eq')
             ])
             expect(interpreter.result).toEqual(true)
@@ -159,29 +160,29 @@ describe(Interpreter, () => {
     describe('boolean algebra', () => {
         it('and', () => {
             interpreter.run([
-                instruct('push', { value: true }),
-                instruct('push', { value: true }),
+                instruct('push', { value: new MyrBoolean(true) }),
+                instruct('push', { value: new MyrBoolean(true) }),
                 instruct('and'),
             ])
             expect(interpreter.result).toEqual(true)
 
             interpreter.run([
-                instruct('push', { value: true }),
-                instruct('push', { value: false }),
+                instruct('push', { value: new MyrBoolean(true) }),
+                instruct('push', { value: new MyrBoolean(false) }),
                 instruct('and'),
             ])
             expect(interpreter.result).toEqual(false)
 
             interpreter.run([
-                instruct('push', { value: false }),
-                instruct('push', { value: true }),
+                instruct('push', { value: new MyrBoolean(false) }),
+                instruct('push', { value: new MyrBoolean(true) }),
                 instruct('and'),
             ])
             expect(interpreter.result).toEqual(false)
 
             interpreter.run([
-                instruct('push', { value: false }),
-                instruct('push', { value: false }),
+                instruct('push', { value: new MyrBoolean(false) }),
+                instruct('push', { value: new MyrBoolean(false) }),
                 instruct('and'),
             ])
             expect(interpreter.result).toEqual(false)
@@ -189,29 +190,29 @@ describe(Interpreter, () => {
 
         it('or', () => {
             interpreter.run([
-                instruct('push', { value: true }),
-                instruct('push', { value: true }),
+                instruct('push', { value: new MyrBoolean(true) }),
+                instruct('push', { value: new MyrBoolean(true) }),
                 instruct('or'),
             ])
             expect(interpreter.result).toEqual(true)
 
             interpreter.run([
-                instruct('push', { value: true }),
-                instruct('push', { value: false }),
+                instruct('push', { value: new MyrBoolean(true) }),
+                instruct('push', { value: new MyrBoolean(false) }),
                 instruct('or'),
             ])
             expect(interpreter.result).toEqual(true)
 
             interpreter.run([
-                instruct('push', { value: false }),
-                instruct('push', { value: true }),
+                instruct('push', { value: new MyrBoolean(false) }),
+                instruct('push', { value: new MyrBoolean(true) }),
                 instruct('or'),
             ])
             expect(interpreter.result).toEqual(true)
 
             interpreter.run([
-                instruct('push', { value: false }),
-                instruct('push', { value: false }),
+                instruct('push', { value: new MyrBoolean(false) }),
+                instruct('push', { value: new MyrBoolean(false) }),
                 instruct('or'),
             ])
             expect(interpreter.result).toEqual(false)
@@ -219,13 +220,13 @@ describe(Interpreter, () => {
 
         it('not', () => {
             interpreter.run([
-                instruct('push', { value: true }),
+                instruct('push', { value: new MyrBoolean(true) }),
                 instruct('not'),
             ])
             expect(interpreter.result).toEqual(false)
 
             interpreter.run([
-                instruct('push', { value: false }),
+                instruct('push', { value: new MyrBoolean(false) }),
                 instruct('not'),
             ])
             expect(interpreter.result).toEqual(true)
@@ -237,7 +238,7 @@ describe(Interpreter, () => {
     describe('arithmetic', () => {
         it('decrements values', () => {
             interpreter.run([
-                instruct('push', { value: 10 }),
+                instruct('push', { value: new MyrNumeric(10) }),
                 instruct('dec'),
             ])
             expect(interpreter.result).toEqual(9)
@@ -245,7 +246,7 @@ describe(Interpreter, () => {
 
         it('increments values', () => {
             interpreter.run([
-                instruct('push', { value: 10 }),
+                instruct('push', { value: new MyrNumeric(10) }),
                 instruct('inc'),
             ])
             expect(interpreter.result).toEqual(11)
@@ -253,8 +254,8 @@ describe(Interpreter, () => {
 
         it('adds values', () => {
             interpreter.run([
-                instruct('push', { value: 2 }),
-                instruct('push', { value: 3 }),
+                instruct('push', { value: new MyrNumeric(2) }),
+                instruct('push', { value: new MyrNumeric(3) }),
                 instruct('add'),
             ])
             expect(interpreter.result).toEqual(5)
@@ -262,8 +263,8 @@ describe(Interpreter, () => {
 
         it('subtracts values', () => {
             interpreter.run([
-                instruct('push', { value: 9 }),
-                instruct('push', { value: 7 }),
+                instruct('push', { value: new MyrNumeric(9) }),
+                instruct('push', { value: new MyrNumeric(7) }),
                 instruct('sub'),
             ])
             expect(interpreter.result).toEqual(2)
@@ -271,8 +272,8 @@ describe(Interpreter, () => {
 
         it('multiplies values', () => {
             interpreter.run([
-                instruct('push', { value: 5 }),
-                instruct('push', { value: 6 }),
+                instruct('push', { value: new MyrNumeric(5) }),
+                instruct('push', { value: new MyrNumeric(6) }),
                 instruct('mul'),
             ])
             expect(interpreter.result).toEqual(30)
@@ -280,8 +281,8 @@ describe(Interpreter, () => {
 
         it('multiplies values', () => {
             interpreter.run([
-                instruct('push', { value: 32 }),
-                instruct('push', { value: 8 }),
+                instruct('push', { value: new MyrNumeric(32) }),
+                instruct('push', { value: new MyrNumeric(8) }),
                 instruct('div'),
             ])
             expect(interpreter.result).toEqual(4)
@@ -290,10 +291,10 @@ describe(Interpreter, () => {
 
     it('unconditional jumps', () => {
         interpreter.run([
-            instruct('push', { value: 4 }),
+            instruct('push', { value: new MyrNumeric(4) }),
             instruct('jump', { target: 'target' }),
-            instruct('push', { value: 15 }), // we'll expect to skip this line
-            instruct('push', { value: 8, label: 'target' }),
+            instruct('push', { value: new MyrNumeric(15) }), // we'll expect to skip this line
+            instruct('push', { value: new MyrNumeric(8), label: 'target' }),
             instruct('add'),
         ])
         expect(interpreter.result).toEqual(12)
@@ -301,11 +302,11 @@ describe(Interpreter, () => {
 
     it('looks for a .main label', () => {
         interpreter.run([
-            instruct('push', { value: 2 }),
-            instruct('push', { value: 1 }),
+            instruct('push', { value: new MyrNumeric(2) }),
+            instruct('push', { value: new MyrNumeric(1) }),
             // ignored until here
-            instruct('push', { value: 3, label: 'main' }),
-            instruct('push', { value: 4 }),
+            instruct('push', { value: new MyrNumeric(3), label: 'main' }),
+            instruct('push', { value: new MyrNumeric(4) }),
             instruct('add'), // i.e., push 7
         ])
         expect(interpreter.result).toEqual(7)
@@ -316,8 +317,8 @@ describe(Interpreter, () => {
         interpreter.run([
             instruct('add', { label: 'sum' }),
             instruct('ret'),
-            instruct('push', { value: 4, label: 'main' }),
-            instruct('push', { value: 9 }),
+            instruct('push', { value: new MyrNumeric(4), label: 'main' }),
+            instruct('push', { value: new MyrNumeric(9) }),
             instruct('call', { target: 'sum' }),
         ])
         expect(interpreter.result).toEqual(13)
@@ -342,12 +343,12 @@ describe(Interpreter, () => {
             instruct('ret'),
             // b:
             instruct('noop', { label: 'b' }),
-            instruct('push', { value: 1 }),
+            instruct('push', { value: new MyrNumeric(1) }),
             instruct('ret'),
             // main:
             instruct('noop', { label: 'main' }),
             instruct('call', { target: 'a' }),
-            instruct('push', { value: 2 }),
+            instruct('push', { value: new MyrNumeric(2) }),
             instruct('add'),
         ])
         expect(interpreter.result).toEqual(3)
@@ -379,13 +380,13 @@ describe(Interpreter, () => {
         it('jump gt', () => {
             interpreter.run([
                 instruct('noop', { label: 'gt_one' }),
-                instruct('jump_if_gt', { value: 1, target: 'one' }),
-                instruct('push', { value: -1 }),
+                instruct('jump_if_gt', { value: new MyrNumeric(1), target: 'one' }),
+                instruct('push', { value: new MyrNumeric(-1) }),
                 instruct('ret'),
-                instruct('push', { value: 100, label: 'one' }),
+                instruct('push', { value: new MyrNumeric(100), label: 'one' }),
                 instruct('ret'),
                 instruct('noop', { label: 'main' }),
-                instruct('push', { value: 2 }),
+                instruct('push', { value: new MyrNumeric(2) }),
                 instruct('call', { target: 'gt_one' }),
             ])
             expect(interpreter.result).toEqual(100)
@@ -395,12 +396,12 @@ describe(Interpreter, () => {
             interpreter.run([
                 instruct('noop', { label: 'eq_z' }),
                 instruct('jump_if_zero', { target: 'one' }),
-                instruct('push', { value: -1 }),
+                instruct('push', { value: new MyrNumeric(-1) }),
                 instruct('ret'),
-                instruct('push', { value: 100, label: 'one' }),
+                instruct('push', { value: new MyrNumeric(100), label: 'one' }),
                 instruct('ret'),
                 instruct('noop', { label: 'main' }),
-                instruct('push', { value: 0 }),
+                instruct('push', { value: new MyrNumeric(0) }),
                 instruct('call', { target: 'eq_z' }),
             ])
             expect(interpreter.result).toEqual(100)
@@ -431,8 +432,8 @@ describe(Interpreter, () => {
             instruct('load', { key: 'acc' }),
             instruct('ret'),
             instruct('noop', { label: 'main' }),
-            instruct('push', { value: 12 }),
-            instruct('push', { value: 24 }),
+            instruct('push', { value: new MyrNumeric(12) }),
+            instruct('push', { value: new MyrNumeric(24) }),
             instruct('call', { target: 'multiply' }),
         ])
         expect(interpreter.result).toEqual(288)
@@ -441,11 +442,11 @@ describe(Interpreter, () => {
     it('isolates variables to frames', () => {
         interpreter.run([
             instruct('noop', { label: 'subroutine' }),
-            instruct('push', { value: 2 }),
+            instruct('push', { value: new MyrNumeric(2) }),
             instruct('store', { key: 'i' }),
             instruct('ret'),
             instruct('noop', { label: 'main' }),
-            instruct('push', { value: 1 }),
+            instruct('push', { value: new MyrNumeric(1) }),
             instruct('store', { key: 'i' }),
             instruct('call', { target: 'subroutine' }),
             instruct('load', { key: 'i' }),

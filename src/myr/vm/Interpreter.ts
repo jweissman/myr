@@ -1,11 +1,11 @@
 import assertNever from 'assert-never';
 import Machine from "./Machine";
 import { Algebra } from "./Algebra";
-import { prettyInstruction, prettyProgram, Instruction, instruct } from "./Instruction";
+import { prettyInstruction, Instruction, instruct } from "./Instruction";
 import { DB } from './DB';
 import { SimpleDB } from './SimpleDB';
 import { OpCode } from './OpCode';
-import { Value, FunctionReference } from './AbstractMachine';
+import { Value, MyrNumeric, MyrFunction, MyrBoolean } from './AbstractMachine';
 
 const average = (arr: number[]) => arr.reduce((a,b) => a + b, 0) / arr.length
 
@@ -92,7 +92,7 @@ class Interpreter<T> {
         if (value !== undefined) {
             this.machine.pop();
         }
-        return value;
+        return value.toJS();
     }
 
     private push(value: Value | undefined) {
@@ -137,7 +137,7 @@ class Interpreter<T> {
         if (value && target) {
             this.machine.push(value);
             this.machine.compare();
-            let doJump = this.machine.stackTop === 1;
+            let doJump = (this.machine.stackTop as MyrNumeric).value === 1;
             this.machine.pop();
             if (doJump) {
                 this.jump(target)
@@ -163,9 +163,9 @@ class Interpreter<T> {
             this.machine.pop()
             this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) })
             this.jump(top);
-        } else if (top && typeof top === 'object') {
+        } else if (top && top instanceof MyrFunction) { //typeof top === 'object') {
             // console.log("INVOKE", top)
-            let { label, closure } = top as FunctionReference;
+            let { label, closure } = top; // as MyrFunction;
             this.machine.pop()
             this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db) }); //new SimpleDB(this.db) })
             this.jump(label);
@@ -178,7 +178,7 @@ class Interpreter<T> {
         if (body) {
             this.lambdaCount += 1
             let label = `lambda-${this.lambdaCount}`;
-            let functionRef: FunctionReference = { label, closure: this.db.clone() } // new SimpleDB(this.db) }
+            let functionRef: MyrFunction = new MyrFunction( label, this.db.clone() ) // new SimpleDB(this.db) }
             let code = this.compiler.generateCode(body)
             this.currentProgram = [
                 ...this.code,
@@ -217,21 +217,21 @@ class Interpreter<T> {
             case 'cmp':   this.machine.compare(); break;
             case 'cmp_gt': 
                 this.machine.compare();
-                let gt: boolean = this.machine.peek() === 1;
+                let gt: boolean = (this.machine.peek() as MyrNumeric).value === 1;
                 this.machine.pop();
-                this.push(gt);
+                this.push(new MyrBoolean(gt));
                 break;
             case 'cmp_lt': 
                 this.machine.compare();
-                let lt: boolean = this.machine.peek() === -1;
+                let lt: boolean = (this.machine.peek() as MyrNumeric).value === -1;
                 this.machine.pop();
-                this.push(lt);
+                this.push(new MyrBoolean(lt));
                 break;
             case 'cmp_eq': 
                 this.machine.compare();
-                let eq: boolean = this.machine.peek() === 0;
+                let eq: boolean = (this.machine.peek() as MyrNumeric).value === 0;
                 this.machine.pop();
-                this.push(eq);
+                this.push(new MyrBoolean(eq));
                 break;
             case 'store': this.store(instruction.key); break;
             case 'load':  this.load(instruction.key); break;
@@ -252,9 +252,9 @@ class Interpreter<T> {
                     let fn = instruction.jsMethod;
                     if (instruction.arity) {
                         let args = this.machine.topN(instruction.arity);
-                        instruction.jsMethod(...args);
+                        fn(...args);
                     } else {
-                        instruction.jsMethod()
+                        fn()
                     }
                 }
                 break;

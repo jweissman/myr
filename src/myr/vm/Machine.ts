@@ -1,4 +1,4 @@
-import { AbstractMachine, Value } from "./AbstractMachine";
+import { AbstractMachine, Value, MyrNumeric, MyrBoolean } from "./AbstractMachine";
 import { Algebra } from "./Algebra";
 import { DB } from "./DB";
 
@@ -22,7 +22,7 @@ export default class Machine extends AbstractMachine {
         // throw new Error("Method not implemented.");
     }
 
-    topIsZero() { return this.algebra.isZero(this.stackTop as number); }
+    topIsZero() { return this.algebra.isZero((this.stackTop as MyrNumeric).value); }
 
     peek(): Value {
         if (this.stackTop !== null) {
@@ -55,25 +55,28 @@ export default class Machine extends AbstractMachine {
     }
 
     compare(): void {
-        let top = this.stackTop;
+        let top = this.stackTop as MyrNumeric;
         this.stack.pop()
-        let second = this.stackTop;
+        let second = this.stackTop as MyrNumeric;
         this.stack.pop()
         // let [a,b] = this.topTwo;
-        let result: number = this.algebra.compare(second as number, top as number);
-        this.stack.push(result as Value);
+        let result: number = this.algebra.compare(second.value, top.value);
+        this.stack.push(new MyrNumeric(result));
     }
 
     decrement() {
-        let top = this.stackTop as number;
+        let top = (this.stackTop as MyrNumeric).value; //number;
         this.stack.pop();
-        this.stack.push(this.algebra.decrement(top));
+        let result = this.algebra.decrement(top);
+        this.stack.push(new MyrNumeric(result));
     }
 
     increment() {
-        let top = this.stackTop as number;
+        // let top = this.stackTop as number;
+        let top = (this.stackTop as MyrNumeric).value; //number;
         this.stack.pop();
-        this.stack.push(this.algebra.increment(top));
+        let result = this.algebra.increment(top);
+        this.stack.push(new MyrNumeric(result));
     }
 
     add(): void {
@@ -118,30 +121,30 @@ export default class Machine extends AbstractMachine {
     }
 
     not() {
-        let result = this.algebra.not(this.stackTop as boolean);
+        let result = this.algebra.not((this.stackTop as MyrBoolean).value);
         this.stack.pop();
-        this.push(result);
+        this.push(new MyrBoolean(result));
     }
 
     private binaryOp(fn: (left: number, right: number) => number): void {
-        let [right, left] = this.topTwo as [number, number];
+        let [right, left] = this.topTwo as [MyrNumeric, MyrNumeric];
         if (left !== undefined && right !== undefined) {
-            let result = fn(left, right)
+            let result = fn(left.value, right.value)
             this.stack.pop();
             this.stack.pop();
-            this.push(result);
+            this.push(new MyrNumeric(result));
         } else {
             throw new Error("Must have at least two items to perform binary operations?")
         }
     }
 
     private binaryOpLog(fn: (left: boolean, right: boolean) => boolean): void {
-        let [right, left] = this.topTwo as [boolean,boolean];
+        let [right, left] = this.topTwo as [MyrBoolean,MyrBoolean];
         if (left !== undefined && right !== undefined) {
-            let result = fn(left, right)
+            let result = fn(left.value, right.value)
             this.stack.pop();
             this.stack.pop();
-            this.push(result);
+            this.push(new MyrBoolean(result));
         } else {
             throw new Error("Must have at least two items to perform binary operations?")
         }
