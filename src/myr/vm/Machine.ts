@@ -1,4 +1,4 @@
-import { AbstractMachine, Value, MyrNumeric, MyrBoolean, MyrArray } from "./AbstractMachine";
+import { AbstractMachine, Value, MyrNumeric, MyrBoolean, MyrArray, MyrObject, MyrString, MyrHash, MyrNil } from "./AbstractMachine";
 import { Algebra } from "./Algebra";
 import { DB } from "./DB";
 
@@ -148,8 +148,35 @@ export default class Machine extends AbstractMachine {
         if (retrieved !== undefined) {
             this.stack.push(retrieved);
         } else {
-            throw new Error("array index out of bounds")
+            this.stack.push(new MyrNil())
+            // throw new Error("array index out of bounds")
         }
+    }
+
+    hashPut() {
+        // hash | key | val
+        let valueToAssign = this.stackTop as MyrObject;
+        this.stack.pop()
+        let key = this.stackTop as MyrString;
+        this.stack.pop()
+        let hash = this.stackTop as MyrHash;
+        this.stack.pop()
+
+        hash.set(key, valueToAssign);
+        this.stack.push(hash);
+        // throw new Error("Method not implemented.");
+    }
+
+    hashGet() {
+        let keyToRetrieve = this.stackTop as MyrString;
+        this.stack.pop();
+        let hash = this.stackTop as MyrHash;
+        this.stack.pop();
+
+        let retrieved: MyrObject = hash.get(keyToRetrieve)
+        // console.log({ key: keyToRetrieve, hash, retrieved })
+
+        this.stack.push(retrieved);
     }
 
     private binaryOp(fn: (left: number, right: number) => number): void {

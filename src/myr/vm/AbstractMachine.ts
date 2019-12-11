@@ -36,7 +36,20 @@ export class MyrArray extends MyrObject {
     }
 }
 
-// class MyrHash
+//  MyrTuple // :D
+
+export class MyrHash extends MyrObject {
+    constructor(public keyValues: {[key: string]: MyrObject} = {}) { super();}
+    toJS() { return { ...this.keyValues }; }
+    set(key: MyrString, valueToAssign: MyrObject) {
+        this.keyValues[key.value] = valueToAssign;
+    }
+    get(keyToRetrieve: MyrString): MyrObject {
+        return this.keyValues[keyToRetrieve.value];
+    }
+}
+
+
 // class MyrClass 
 
 export type Value = MyrObject
@@ -61,4 +74,6 @@ export abstract class AbstractMachine {
 
     abstract arrayPut(): void;
     abstract arrayGet(): void;
+
+    abstract hashPut(): void;
 }

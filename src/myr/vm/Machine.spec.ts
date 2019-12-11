@@ -3,7 +3,7 @@ import { Algebra } from "./Algebra";
 import { SimpleAlgebra } from "./SimpleAlgebra";
 import { SimpleDB } from "./SimpleDB";
 import { DB } from "./DB";
-import { MyrObject, MyrNumeric, MyrArray, MyrString } from "./AbstractMachine";
+import { MyrObject, MyrNumeric, MyrArray, MyrString, MyrHash } from "./AbstractMachine";
 
 describe(Machine, () => {
     let machine: Machine;
@@ -136,5 +136,41 @@ describe(Machine, () => {
         machine.push(new MyrNumeric(2))
         machine.arrayGet();
         expect(machine.peek()).toEqual(new MyrString("world"))
+    })
+
+    it('hash assemble', () => {
+        let hash = new MyrHash();
+        machine.push(hash);
+
+        // should this be a tuple
+        machine.push(new MyrString("hello")); // key -- hard limited to strings
+        machine.push(new MyrNumeric(12345)); // value
+
+        machine.hashPut(); // value
+        expect((machine.peek() as MyrHash).keyValues['hello']).toEqual(new MyrNumeric(12345));
+    })
+
+    it('hash inspect', () => {
+        let hash = new MyrHash({
+            name: new MyrString("John Smith"),
+            scores: new MyrArray([
+                new MyrNumeric(123),
+                new MyrNumeric(89),
+                new MyrNumeric(95),
+            ])
+        });
+        machine.push(hash);
+        machine.push(new MyrString("name"));
+        machine.hashGet();
+        expect(machine.peek()).toEqual(new MyrString("John Smith"));
+
+        machine.push(hash);
+        machine.push(new MyrString("scores"));
+        machine.hashGet();
+        expect(machine.peek()).toEqual(new MyrArray([
+            new MyrNumeric(123),
+            new MyrNumeric(89),
+            new MyrNumeric(95),
+        ]));
     })
 })

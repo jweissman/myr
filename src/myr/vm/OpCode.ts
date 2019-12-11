@@ -21,6 +21,8 @@ export type OpCode = 'push'
 
                    | 'arr_get'
                    | 'arr_put'
+                   | 'hash_get'
+                   | 'hash_put'
 
                    | 'cmp'
                    | 'cmp_gt'

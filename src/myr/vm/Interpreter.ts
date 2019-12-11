@@ -272,6 +272,8 @@ class Interpreter<T> {
                 break;
             case 'arr_get': this.machine.arrayGet(); break;
             case 'arr_put': this.machine.arrayPut(); break;
+            case 'hash_get': this.machine.hashGet(); break;
+            case 'hash_put': this.machine.hashPut(); break;
             default: assertNever(op);
         }
     }

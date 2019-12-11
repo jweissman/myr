@@ -37,6 +37,7 @@ export class SimpleDB extends DB {
     }
 
     clone(): SimpleDB {
+        // return this;
         let {store} = this;
         let copy = {...store}
         return SimpleDB.fromStore(copy, this)
