@@ -2,7 +2,7 @@ import Interpreter, { Compiler } from "./Interpreter"
 import { SimpleAlgebra } from "./SimpleAlgebra";
 import { instruct, Instruction } from "./Instruction";
 import assertNever from "assert-never";
-import { MyrNumeric, MyrBoolean } from "./AbstractMachine";
+import { MyrNumeric, MyrBoolean, MyrObject, MyrFunction } from "./AbstractMachine";
 
 // support compile spec
 abstract class AbstractASTNode { abstract get gen(): Instruction[] }
@@ -439,6 +439,8 @@ describe(Interpreter, () => {
         expect(interpreter.result).toEqual(288)
     })
 
+    // maybe need to rethink this? the sub should probably be able to see into i
+    // if it's defined outside
     it('isolates variables to frames', () => {
         interpreter.run([
             instruct('noop', { label: 'subroutine' }),
@@ -455,4 +457,20 @@ describe(Interpreter, () => {
     })
 
     test.todo('dynamic invoke');
+    it('object', () => {
+        // MyrFunction
+        interpreter.run([
+            instruct('push', { value: new MyrObject('test-obj') }),
+            instruct('store', { key: 'test' }),
+            // instruct('construct'), //, { value: new MyrObject() }),
+            instruct('load', { key: 'test' }),
+            instruct('push', { value: new MyrNumeric(33) }),
+            instruct('send_eq', { key: 'age' }),
+            // instruct('pop_self'),
+            instruct('load', { key: 'test' }),
+            instruct('send', { key: 'age' }),
+            // myr object with age=33 property should be on the stack
+        ])
+        expect(interpreter.result).toEqual(33)
+    })
 })

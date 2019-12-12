@@ -33,9 +33,18 @@ export function instruct(
     return { op, ...details }
 }
 
+function prettyValue(value: Value) {
+    let js = value.toJS();
+    if (typeof js === "object") {
+        return `${value.name} (${value.constructor.name})`; // JSON.stringify(js);
+    } else {
+        return js;
+    }
+}
+
 let pad = 12;
 export function prettyInstruction(inst: Instruction) {
-    let arg = (inst.value && inst.value.toJS()) || inst.key || inst.target 
+    let arg = (inst.value && prettyValue(inst.value)) || inst.key || inst.target 
     let result;
     if (arg && !(arg === undefined)) {
         result = `${inst.op}(${(arg)})`.padEnd(pad);

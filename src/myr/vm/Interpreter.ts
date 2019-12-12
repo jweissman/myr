@@ -5,12 +5,11 @@ import { prettyInstruction, Instruction, instruct } from "./Instruction";
 import { DB } from './DB';
 import { SimpleDB } from './SimpleDB';
 import { OpCode } from './OpCode';
-import { Value, MyrNumeric, MyrFunction, MyrBoolean } from './AbstractMachine';
-import { MyrNil } from '../../..';
+import { Value, MyrNumeric, MyrFunction, MyrBoolean, MyrObject, MyrString, MyrHash } from './AbstractMachine';
 
-const average = (arr: number[]) => arr.reduce((a,b) => a + b, 0) / arr.length
+type Frame = { retAddr: number, db: DB } //, self: MyrObject }
 
-type Frame = { retAddr: number, db: DB }
+// let main = new MyrObject();
 
 abstract class Compiler<T> {
     abstract generateCode(ast: T): Instruction[];
@@ -22,7 +21,8 @@ class Interpreter<T> {
     public machine: Machine;
 
     private ip: number = -1;
-    private frames: Frame[] = [{ retAddr: -1, db: new SimpleDB() }]
+    private frames: Frame[] = [{ retAddr: -1, db: new SimpleDB() }] //, self: main }]
+    // private selves: MyrObject[] = [main];
 
     constructor(algebra: Algebra, private compiler: Compiler<T>) {
         this.machine = new Machine(algebra);
@@ -33,6 +33,10 @@ class Interpreter<T> {
     private get retAddr(): number {
         return this.topFrame.retAddr;
     }
+
+    // public get self(): MyrObject {
+    //     return this.topFrame.self;
+    // }
 
     public get db(): DB {
         return this.topFrame.db;
@@ -108,6 +112,7 @@ class Interpreter<T> {
 
     private store(key: string | undefined) {
         if (key !== undefined) {
+            // console.log("STORE", { key, db: this.db })
             this.machine.store(key, this.db);
         } else {
             throw new Error("Must have a key to reference stored variable by")
@@ -116,9 +121,9 @@ class Interpreter<T> {
 
     private load(key: string | undefined) {
         if (key) {
+            // console.log("LOAD", { key, db: JSON.stringify(this.db) })
             this.machine.load(key, this.db);
         } else {
-            debugger;
             throw new Error("Must have a key to reference loaded variable by")
         }
     }
@@ -165,13 +170,15 @@ class Interpreter<T> {
         let top = this.machine.stackTop;
         if (top && typeof top === 'string') {
             this.machine.pop()
-            this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) })
+            this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) }) //, self: this.self })
             this.jump(top);
         } else if (top && top instanceof MyrFunction) { //typeof top === 'object') {
             // console.log("INVOKE", top)
             let { label, closure } = top; // as MyrFunction;
+            // this.pushSelf
+            // this.selves.push(top);
             this.machine.pop()
-            this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db) }); //new SimpleDB(this.db) })
+            this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db) }); //, self: this.self }); //new SimpleDB(this.db) })
             this.jump(label);
         } else {
             throw new Error("invoke expects stack top to have reference to (string value of) function name to call...")
@@ -237,7 +244,10 @@ class Interpreter<T> {
                 this.machine.pop();
                 this.push(new MyrBoolean(eq));
                 break;
-            case 'store': this.store(instruction.key); break;
+            case 'store':
+                this.store(instruction.key);
+                // console.log("SELF AFTER STORE", { self: this.self, store: this.self.members.store })
+                break;
             case 'load':  this.load(instruction.key); break;
             case 'jump':  this.jump(instruction.target); break;
             case 'jump_if_gt':
@@ -247,7 +257,7 @@ class Interpreter<T> {
                 this.jump_z(instruction.target);
                 break;
             case 'call': 
-                this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) })
+                this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) }) //, self: this.self })
                 this.jump(instruction.target);
                 break;
             case 'invoke': this.invoke(); break;
@@ -274,6 +284,68 @@ class Interpreter<T> {
             case 'arr_put': this.machine.arrayPut(); break;
             case 'hash_get': this.machine.hashGet(); break;
             case 'hash_put': this.machine.hashPut(); break;
+            // case 'push_self':
+            //     let newSelf = this.machine.peek();
+            //     // console.log("PUSH SELF", { newSelf })
+            //     // this.machine.pop();
+            //     // this.frames.push({ retAddr: this.ip, db: newSelf.members })
+            //     this.selves.push(newSelf);
+            //     break;
+            // case 'pop_self':
+            //     let oldSelf = this.selves.pop();
+            //     // this.selves.pop();
+            //     this.push(oldSelf);
+            //     // this.frames.pop();
+            //     break;
+            case 'send_eq':
+                let value = this.machine.peek(); //this.selves[this.selves.length-1];
+                this.machine.pop();
+                let recv = this.machine.peek(); //this.selves[this.selves.length-1];
+                this.machine.pop();
+                let msg = instruction.key;
+                if (msg) {
+                    debugger;
+                    if (recv instanceof MyrHash) {
+                        this.push(recv);
+                        this.push(new MyrString(msg));
+                        this.push(value);
+                        this.machine.hashPut();
+                    } else {
+                        recv.members.put(msg, value);
+                    }
+                } else {
+                    throw new Error("must provide a key for send_eq?")
+                }
+                break;
+            case 'send': 
+                let receiver = this.machine.peek(); //this.selves[this.selves.length-1];
+                if (receiver instanceof MyrHash && instruction.key) {
+                    this.machine.push(new MyrString(instruction.key));
+                    // this.machine.swap();
+                    // if (receiver.keyValues[])
+                    this.machine.hashGet();
+                } else {
+                    this.machine.pop();
+                    let message = (instruction.key); // as MyrString).value;
+                    // console.log("SEND OBJ", { self: receiver, message })
+                    // if (receiver instanceof MyrHash) {
+                    // send hash get...?
+                    // }
+                    // debugger;
+                    if (message && receiver.members.get(message)) {
+                        let member = receiver.members.get(message);
+                        if (member instanceof MyrFunction) {
+                            // call the member?
+                            this.push(member);
+                            this.invoke();
+                        } else {
+                            this.push(member);
+                        }
+                    } else {
+                        throw new Error("Method missing on " + receiver.toJS() + ": " + message);
+                    }
+                }
+                break;
             default: assertNever(op);
         }
     }

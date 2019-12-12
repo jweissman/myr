@@ -3,6 +3,12 @@ import { Algebra } from "./Algebra";
 import { DB } from "./DB";
 
 export default class Machine extends AbstractMachine {
+    selfSet(): void {
+        throw new Error("Method not implemented.");
+    }
+    selfGet(): void {
+        throw new Error("Method not implemented.");
+    }
     stack: Array<Value> = [];
 
     constructor(private algebra: Algebra) { //}, private db: DB<T, string>) {
@@ -102,7 +108,9 @@ export default class Machine extends AbstractMachine {
     store(key: string, db: DB): void {
         let top = this.peek();
         if (top !== undefined) {
+            // console.log("PUT " + key + " into " + JSON.stringify(db))
             db.put(key, top)
+            // console.log("(after) PUT " + key + " into " + JSON.stringify(db))
         } else {
             throw new Error("Called #store on an empty stack.");
         }
@@ -177,6 +185,26 @@ export default class Machine extends AbstractMachine {
         // console.log({ key: keyToRetrieve, hash, retrieved })
 
         this.stack.push(retrieved);
+    }
+
+    objSet() {
+        let member = this.stackTop as MyrObject;
+        this.stack.pop();
+        let key = this.stackTop as MyrString;
+        this.stack.pop();
+        let obj = this.stackTop as MyrObject;
+        this.stack.pop();
+        obj.members.put(key.value, member);
+        return;
+    }
+
+    objGet() {
+        let key = this.stackTop as MyrString;
+        this.stack.pop();
+        let obj = this.stackTop as MyrObject;
+        this.stack.pop();
+        let retreived = obj.members.get(key.value);
+        this.stack.push(retreived);
     }
 
     private binaryOp(fn: (left: number, right: number) => number): void {

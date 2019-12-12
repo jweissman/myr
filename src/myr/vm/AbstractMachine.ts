@@ -1,7 +1,22 @@
 import { DB } from "./DB";
+import { Instruction } from "./Instruction";
+import { SimpleDB } from "./SimpleDB";
 
-export abstract class MyrObject {
-    abstract toJS(): any;
+export class MyrObject {
+    public members: DB = new SimpleDB();
+    // private klass
+    constructor(public name: string='') {}
+    // private members: { [name: string]: MyrObject } = {};
+    // private methods: { [name: string]: MyrFunction } = {};
+    // klass!: MyrClass;
+    toJS(): any { return this; };
+
+    // createMember(name: string, value: MyrObject) {
+    //     this.members[name] = value;
+    // }
+    // createMethod(name: string, value: MyrObject) {
+    //     this.methods[name] = value;
+    // }
 }
 
 export class MyrNumeric extends MyrObject {
@@ -40,7 +55,13 @@ export class MyrArray extends MyrObject {
 
 export class MyrHash extends MyrObject {
     constructor(public keyValues: {[key: string]: MyrObject} = {}) { super();}
-    toJS() { return { ...this.keyValues }; }
+    toJS() {
+        let fields = { ...this.keyValues };
+        Object.keys(fields).map((key) => {
+            fields[key] = fields[key].toJS();
+        });
+        return fields;
+    }
     set(key: MyrString, valueToAssign: MyrObject) {
         this.keyValues[key.value] = valueToAssign;
     }
@@ -49,8 +70,19 @@ export class MyrHash extends MyrObject {
     }
 }
 
+export class MyrClass extends MyrObject {
+    constructor(public name: string, public ctor: Instruction[] = []) { super(); }
+    toJS() {
+        return this; //{ className: this.name }
+        // throw new Error("MyrClass#toJS -- Method not implemented.");
+    }
+}
 
-// class MyrClass 
+// const objectFactory = (klass: MyrClass) => {
+//     let object: MyrObject = new MyrObject();
+//     object.klass = klass;
+//     return object;
+// }
 
 export type Value = MyrObject
 
@@ -76,4 +108,15 @@ export abstract class AbstractMachine {
     abstract arrayGet(): void;
 
     abstract hashPut(): void;
+    abstract hashGet(): void;
+
+    // enter/exit scopes (object/module...)
+    // abstract objEnter(): void;
+    abstract selfSet(): void;
+    abstract selfGet(): void;
+    // abstract objExit(): void;
+    // these may be more for the interpreter layer??
+    // which governs the scoped db currently
+    // abstract pushSelf(): void;
+    // abstract popSelf(): void;
 }

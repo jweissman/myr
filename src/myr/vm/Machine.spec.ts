@@ -173,4 +173,19 @@ describe(Machine, () => {
             new MyrNumeric(95),
         ]));
     })
+
+    it('object mgmt', () => {
+        let db = new SimpleDB();
+        let obj = new MyrObject('test-obj');
+        machine.push(obj);
+        machine.store('test', db);
+        machine.load('test', db);
+        machine.push(new MyrString("age"))
+        machine.push(new MyrNumeric(33))
+        machine.objSet();
+        machine.load('test', db);
+        machine.push(new MyrString("age"))
+        machine.objGet();
+        expect(machine.peek()).toEqual(new MyrNumeric(33));
+    })
 })
