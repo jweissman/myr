@@ -7,9 +7,9 @@ import { SimpleDB } from './SimpleDB';
 import { OpCode } from './OpCode';
 import { Value, MyrNumeric, MyrFunction, MyrBoolean, MyrObject, MyrString, MyrHash } from './AbstractMachine';
 
-type Frame = { retAddr: number, db: DB } //, self: MyrObject }
+type Frame = { retAddr: number, db: DB, self: MyrObject }
 
-// let main = new MyrObject();
+let main = new MyrObject();
 
 abstract class Compiler<T> {
     abstract generateCode(ast: T): Instruction[];
@@ -21,7 +21,7 @@ class Interpreter<T> {
     public machine: Machine;
 
     private ip: number = -1;
-    private frames: Frame[] = [{ retAddr: -1, db: new SimpleDB() }] //, self: main }]
+    private frames: Frame[] = [{ retAddr: -1, db: new SimpleDB(), self: main }]
     // private selves: MyrObject[] = [main];
 
     constructor(algebra: Algebra, private compiler: Compiler<T>) {
@@ -34,9 +34,9 @@ class Interpreter<T> {
         return this.topFrame.retAddr;
     }
 
-    // public get self(): MyrObject {
-    //     return this.topFrame.self;
-    // }
+    public get self(): MyrObject {
+        return this.topFrame.self;
+    }
 
     public get db(): DB {
         return this.topFrame.db;
@@ -166,19 +166,22 @@ class Interpreter<T> {
         }
     }
 
-    private invoke() {
+    private invoke(self = this.self) {
         let top = this.machine.stackTop;
-        if (top && typeof top === 'string') {
-            this.machine.pop()
-            this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) }) //, self: this.self })
-            this.jump(top);
-        } else if (top && top instanceof MyrFunction) { //typeof top === 'object') {
+        // if (top && typeof top === 'string') {
+        //     this.machine.pop()
+        //     this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db), self })
+        //     this.jump(top);
+        // } else 
+
+        if (top && top instanceof MyrFunction) { //typeof top === 'object') {
             // console.log("INVOKE", top)
             let { label, closure } = top; // as MyrFunction;
             // this.pushSelf
             // this.selves.push(top);
             this.machine.pop()
-            this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db) }); //, self: this.self }); //new SimpleDB(this.db) })
+            // console.log("PUSH FRAME FOR FUNCALL", { self })
+            this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db), self }); //new SimpleDB(this.db) })
             this.jump(label);
         } else {
             throw new Error("invoke expects stack top to have reference to (string value of) function name to call...")
@@ -248,7 +251,16 @@ class Interpreter<T> {
                 this.store(instruction.key);
                 // console.log("SELF AFTER STORE", { self: this.self, store: this.self.members.store })
                 break;
-            case 'load':  this.load(instruction.key); break;
+            case 'load': 
+                if (instruction.key === 'self') {
+                    // console.log("LOAD SELF", { self: this.self })
+                    this.push(this.self);
+                    // load self as object???
+                    // throw new Error("Don't know self")
+                } else {
+                    this.load(instruction.key);
+                }
+                break;
             case 'jump':  this.jump(instruction.target); break;
             case 'jump_if_gt':
                 this.jump_gt(instruction.value, instruction.target);
@@ -257,7 +269,7 @@ class Interpreter<T> {
                 this.jump_z(instruction.target);
                 break;
             case 'call': 
-                this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db) }) //, self: this.self })
+                this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db), self: this.self }) //, self: this.self })
                 this.jump(instruction.target);
                 break;
             case 'invoke': this.invoke(); break;
@@ -284,23 +296,10 @@ class Interpreter<T> {
             case 'arr_put': this.machine.arrayPut(); break;
             case 'hash_get': this.machine.hashGet(); break;
             case 'hash_put': this.machine.hashPut(); break;
-            // case 'push_self':
-            //     let newSelf = this.machine.peek();
-            //     // console.log("PUSH SELF", { newSelf })
-            //     // this.machine.pop();
-            //     // this.frames.push({ retAddr: this.ip, db: newSelf.members })
-            //     this.selves.push(newSelf);
-            //     break;
-            // case 'pop_self':
-            //     let oldSelf = this.selves.pop();
-            //     // this.selves.pop();
-            //     this.push(oldSelf);
-            //     // this.frames.pop();
-            //     break;
             case 'send_eq':
-                let value = this.machine.peek(); //this.selves[this.selves.length-1];
+                let value = this.machine.peek();
                 this.machine.pop();
-                let recv = this.machine.peek(); //this.selves[this.selves.length-1];
+                let recv = this.machine.peek();
                 this.machine.pop();
                 let msg = instruction.key;
                 if (msg) {
@@ -311,6 +310,7 @@ class Interpreter<T> {
                         this.push(value);
                         this.machine.hashPut();
                     } else {
+                        // console.log("SEND_EQ", { recv, msg, value })
                         recv.members.put(msg, value);
                     }
                 } else {
@@ -318,26 +318,24 @@ class Interpreter<T> {
                 }
                 break;
             case 'send': 
-                let receiver = this.machine.peek(); //this.selves[this.selves.length-1];
+                let receiver = this.machine.peek();
                 if (receiver instanceof MyrHash && instruction.key) {
                     this.machine.push(new MyrString(instruction.key));
-                    // this.machine.swap();
-                    // if (receiver.keyValues[])
                     this.machine.hashGet();
-                } else {
+                    if (this.machine.stackTop instanceof MyrFunction) {
+                        // we should call the function?
+                        this.invoke();
+                    }
+                } else { // assume we're an object
+                    // console.log("SEND", { receiver })
                     this.machine.pop();
-                    let message = (instruction.key); // as MyrString).value;
-                    // console.log("SEND OBJ", { self: receiver, message })
-                    // if (receiver instanceof MyrHash) {
-                    // send hash get...?
-                    // }
-                    // debugger;
+                    let message = (instruction.key);
                     if (message && receiver.members.get(message)) {
                         let member = receiver.members.get(message);
+                        // console.log("SEND", { receiver, message, member })
                         if (member instanceof MyrFunction) {
-                            // call the member?
                             this.push(member);
-                            this.invoke();
+                            this.invoke(receiver);
                         } else {
                             this.push(member);
                         }
@@ -345,6 +343,11 @@ class Interpreter<T> {
                         throw new Error("Method missing on " + receiver.toJS() + ": " + message);
                     }
                 }
+                break;
+            case 'construct':
+                let newObj = new MyrObject();
+                // newObj.members.put("initialize", new MyrFunction(''));
+                this.push(newObj);
                 break;
             default: assertNever(op);
         }

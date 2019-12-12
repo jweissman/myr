@@ -1,5 +1,5 @@
 import { DB } from "./DB";
-import { Value } from "./AbstractMachine";
+import { Value, MyrNil } from "./AbstractMachine";
 type Store = { [key: string]: Value; }
 export class SimpleDB extends DB {
     underlyingStores: DB[];
@@ -26,8 +26,9 @@ export class SimpleDB extends DB {
             if (matchingBag) {
                 return matchingBag.get(key)
             } else {
-                console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStores })
-                throw new Error("No such variable defined: " + key)
+                return new MyrNil()
+                // console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStores })
+                // throw new Error("No such variable defined: " + key)
             }
         }
     }
@@ -42,4 +43,8 @@ export class SimpleDB extends DB {
         let copy = {...store}
         return SimpleDB.fromStore(copy, this)
     }
+
+    toJS() { return Object.fromEntries(
+        Object.entries({...this.store}).map(([key,value]) => [key, value.toJS()])
+     ) }
 }

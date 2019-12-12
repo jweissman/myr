@@ -2,21 +2,15 @@ import { DB } from "./DB";
 import { Instruction } from "./Instruction";
 import { SimpleDB } from "./SimpleDB";
 
+let objectCount = 0;
 export class MyrObject {
     public members: DB = new SimpleDB();
-    // private klass
-    constructor(public name: string='') {}
-    // private members: { [name: string]: MyrObject } = {};
-    // private methods: { [name: string]: MyrFunction } = {};
+    // private _objectId: number; // = objectCount++;
+    constructor(public name: string='') {
+        // this._objectId = objectCount++;
+    }
     // klass!: MyrClass;
-    toJS(): any { return this; };
-
-    // createMember(name: string, value: MyrObject) {
-    //     this.members[name] = value;
-    // }
-    // createMethod(name: string, value: MyrObject) {
-    //     this.methods[name] = value;
-    // }
+    toJS(): any { return { ...this.members.toJS() }; };
 }
 
 export class MyrNumeric extends MyrObject {
@@ -32,7 +26,7 @@ export class MyrBoolean extends MyrObject {
     toJS(): boolean { return this.value; }
 }
 export class MyrFunction extends MyrObject {
-    constructor(public label: string, public closure: DB) {
+    constructor(public label: string, public closure: DB = new SimpleDB()) {
         super();
     }
     toJS(): string { return `MyrFunction(${this.label})`; }
@@ -71,9 +65,9 @@ export class MyrHash extends MyrObject {
 }
 
 export class MyrClass extends MyrObject {
-    constructor(public name: string, public ctor: Instruction[] = []) { super(); }
+    constructor(public name: string) { super(); }
     toJS() {
-        return this; //{ className: this.name }
+        return `MyrClass[${this.name}]`; //{ className: this.name }
         // throw new Error("MyrClass#toJS -- Method not implemented.");
     }
 }
