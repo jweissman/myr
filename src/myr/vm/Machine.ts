@@ -187,25 +187,25 @@ export default class Machine extends AbstractMachine {
         this.stack.push(retrieved);
     }
 
-    objSet() {
-        let member = this.stackTop as MyrObject;
-        this.stack.pop();
-        let key = this.stackTop as MyrString;
-        this.stack.pop();
-        let obj = this.stackTop as MyrObject;
-        this.stack.pop();
-        obj.members.put(key.value, member);
-        return;
-    }
+    // objSet() {
+    //     let member = this.stackTop as MyrObject;
+    //     this.stack.pop();
+    //     let key = this.stackTop as MyrString;
+    //     this.stack.pop();
+    //     let obj = this.stackTop as MyrObject;
+    //     this.stack.pop();
+    //     obj.members.put(key.value, member);
+    //     return;
+    // }
 
-    objGet() {
-        let key = this.stackTop as MyrString;
-        this.stack.pop();
-        let obj = this.stackTop as MyrObject;
-        this.stack.pop();
-        let retreived = obj.members.get(key.value);
-        this.stack.push(retreived);
-    }
+    // objGet() {
+    //     let key = this.stackTop as MyrString;
+    //     this.stack.pop();
+    //     let obj = this.stackTop as MyrObject;
+    //     this.stack.pop();
+    //     let retreived = obj.members.get(key.value);
+    //     this.stack.push(retreived);
+    // }
 
     private binaryOp(fn: (left: number, right: number) => number): void {
         let [right, left] = this.topTwo as [MyrNumeric, MyrNumeric];

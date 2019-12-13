@@ -106,8 +106,8 @@ export abstract class AbstractMachine {
 
     // enter/exit scopes (object/module...)
     // abstract objEnter(): void;
-    abstract selfSet(): void;
-    abstract selfGet(): void;
+    // abstract selfSet(): void;
+    // abstract selfGet(): void;
     // abstract objExit(): void;
     // these may be more for the interpreter layer??
     // which governs the scoped db currently

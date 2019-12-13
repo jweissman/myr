@@ -46,4 +46,5 @@ export type OpCode = 'push'
 
                    | 'ret'
                    | 'halt' // hard stop
+                   | 'dump' // print stack
                    ;

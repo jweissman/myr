@@ -6,6 +6,7 @@ import { DB } from './DB';
 import { SimpleDB } from './SimpleDB';
 import { OpCode } from './OpCode';
 import { Value, MyrNumeric, MyrFunction, MyrBoolean, MyrObject, MyrString, MyrHash } from './AbstractMachine';
+import chalk from 'chalk';
 
 type Frame = { retAddr: number, db: DB, self: MyrObject }
 
@@ -168,23 +169,13 @@ class Interpreter<T> {
 
     private invoke(self = this.self) {
         let top = this.machine.stackTop;
-        // if (top && typeof top === 'string') {
-        //     this.machine.pop()
-        //     this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db), self })
-        //     this.jump(top);
-        // } else 
-
-        if (top && top instanceof MyrFunction) { //typeof top === 'object') {
-            // console.log("INVOKE", top)
-            let { label, closure } = top; // as MyrFunction;
-            // this.pushSelf
-            // this.selves.push(top);
+        if (top && top instanceof MyrFunction) {
+            let { label, closure } = top;
             this.machine.pop()
-            // console.log("PUSH FRAME FOR FUNCALL", { self })
-            this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db), self }); //new SimpleDB(this.db) })
+            this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db), self });
             this.jump(label);
         } else {
-            throw new Error("invoke expects stack top to have reference to (string value of) function name to call...")
+            throw new Error("invoke expects stack top to have function to call...")
         }
     }
 
@@ -192,7 +183,7 @@ class Interpreter<T> {
         if (body) {
             this.lambdaCount += 1
             let label = `lambda-${this.lambdaCount}`;
-            let functionRef: MyrFunction = new MyrFunction( label, this.db.clone() ) // new SimpleDB(this.db) }
+            let functionRef: MyrFunction = new MyrFunction( label, this.db.clone() )
             let code = this.compiler.generateCode(body)
             this.currentProgram = [
                 ...this.code,
@@ -200,7 +191,6 @@ class Interpreter<T> {
                 instruct('noop', { label }),
                 ...code,
             ]
-            // console.log("COMPILED", { functionRef })
             this.push(functionRef);
         } else {
             throw new Error("asked to gen code without code (ast expected in instr. 'body')")
@@ -346,8 +336,13 @@ class Interpreter<T> {
                 break;
             case 'construct':
                 let newObj = new MyrObject();
-                // newObj.members.put("initialize", new MyrFunction(''));
                 this.push(newObj);
+                break;
+            case 'dump':
+                if (instruction.key) {
+                    console.log(chalk.green(instruction.key));
+                }
+                console.log("STACK: " + this.machine.stack.map(val => JSON.stringify(val.toJS())));
                 break;
             default: assertNever(op);
         }
