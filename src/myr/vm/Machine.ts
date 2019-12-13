@@ -110,6 +110,7 @@ export default class Machine extends AbstractMachine {
         if (top !== undefined) {
             // console.log("PUT " + key + " into " + JSON.stringify(db))
             db.put(key, top)
+            // this.pop();
             // console.log("(after) PUT " + key + " into " + JSON.stringify(db))
         } else {
             throw new Error("Called #store on an empty stack.");

@@ -26,9 +26,9 @@ export class SimpleDB extends DB {
             if (matchingBag) {
                 return matchingBag.get(key)
             } else {
-                return new MyrNil()
+                // return new MyrNil()
                 // console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStores })
-                // throw new Error("No such variable defined: " + key)
+                throw new Error("No such variable defined: " + key)
             }
         }
     }

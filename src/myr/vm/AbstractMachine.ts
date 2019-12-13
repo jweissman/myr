@@ -2,7 +2,12 @@ import { DB } from "./DB";
 import { Instruction } from "./Instruction";
 import { SimpleDB } from "./SimpleDB";
 
-let objectCount = 0;
+function omit(key: string, obj: object): object {
+    const { [key]: omitted, ...rest }: { [name: string]: any } = obj;
+    return rest;
+}
+
+// let objectCount = 0;
 export class MyrObject {
     public members: DB = new SimpleDB();
     // private _objectId: number; // = objectCount++;
@@ -10,7 +15,11 @@ export class MyrObject {
         // this._objectId = objectCount++;
     }
     // klass!: MyrClass;
-    toJS(): any { return { ...this.members.toJS() }; };
+    toJS(): any {
+        let printableMembers = omit("initialize",
+            omit("class", this.members.toJS()));
+        return this.members.get("class").name + "(" + JSON.stringify(printableMembers) + ")";
+    };
 }
 
 export class MyrNumeric extends MyrObject {
@@ -45,6 +54,8 @@ export class MyrArray extends MyrObject {
     }
 }
 
+export class Tombstone extends MyrObject {}
+
 //  MyrTuple // :D
 
 export class MyrHash extends MyrObject {
@@ -60,7 +71,7 @@ export class MyrHash extends MyrObject {
         this.keyValues[key.value] = valueToAssign;
     }
     get(keyToRetrieve: MyrString): MyrObject {
-        return this.keyValues[keyToRetrieve.value];
+        return this.keyValues[keyToRetrieve.value] || new MyrNil();
     }
 }
 

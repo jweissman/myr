@@ -47,4 +47,7 @@ export type OpCode = 'push'
                    | 'ret'
                    | 'halt' // hard stop
                    | 'dump' // print stack
+
+                   | 'mark' // push tombstone onto stack
+                   | 'sweep' // pop until tombstone is found
                    ;

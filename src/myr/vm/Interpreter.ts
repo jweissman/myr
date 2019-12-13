@@ -5,7 +5,7 @@ import { prettyInstruction, Instruction, instruct } from "./Instruction";
 import { DB } from './DB';
 import { SimpleDB } from './SimpleDB';
 import { OpCode } from './OpCode';
-import { Value, MyrNumeric, MyrFunction, MyrBoolean, MyrObject, MyrString, MyrHash } from './AbstractMachine';
+import { Value, MyrNumeric, MyrFunction, MyrBoolean, MyrObject, MyrString, MyrHash, MyrNil, Tombstone } from './AbstractMachine';
 import chalk from 'chalk';
 
 type Frame = { retAddr: number, db: DB, self: MyrObject }
@@ -17,7 +17,7 @@ abstract class Compiler<T> {
 }
 
 class Interpreter<T> {
-    private trace: boolean = false;
+    public trace: boolean = false;
 
     public machine: Machine;
 
@@ -69,14 +69,18 @@ class Interpreter<T> {
                     );
             }
 
-            // if (this.trace && this.machine.stack.length) {
+            if (this.trace && this.machine.stack.length) {
+
+                this.dumpStack('stack before')
             //     console.log(" (stack before: " + this.machine.stack + ")");
-            // }
+            }
             this.execute(instruction);
             if (this.trace && this.machine.stack.length) {
-                console.log(
-                    " (stack after: " + this.machine.stack.map(elem => elem.toJS()) + ")"
-                );
+                // console.log(chalk.white("stack after instruction"))
+                this.dumpStack('stack after')
+                // console.log(
+                //     " (stack after: " + this.machine.stack.map(elem => elem.toJS()) + ")"
+                // );
             }
             this.ip++;
             stackLengths.push(this.machine.stack.length)
@@ -99,6 +103,7 @@ class Interpreter<T> {
             this.machine.pop();
             return value.toJS();
         } else {
+            // this.machine.pop();
             return null;
         }
     }
@@ -315,14 +320,16 @@ class Interpreter<T> {
                     if (this.machine.stackTop instanceof MyrFunction) {
                         // we should call the function?
                         this.invoke();
+                    } else {
+                        if (this.machine.stackTop === undefined) {
+                            this.machine.pop(); // replace with nil?
+                        }
                     }
                 } else { // assume we're an object
-                    // console.log("SEND", { receiver })
                     this.machine.pop();
                     let message = (instruction.key);
                     if (message && receiver.members.get(message)) {
                         let member = receiver.members.get(message);
-                        // console.log("SEND", { receiver, message, member })
                         if (member instanceof MyrFunction) {
                             this.push(member);
                             this.invoke(receiver);
@@ -336,16 +343,34 @@ class Interpreter<T> {
                 break;
             case 'construct':
                 let newObj = new MyrObject();
+                // newObj.members.put("initialize", new MyrNil())
                 this.push(newObj);
                 break;
             case 'dump':
                 if (instruction.key) {
                     console.log(chalk.green(instruction.key));
                 }
-                console.log("STACK: " + this.machine.stack.map(val => JSON.stringify(val.toJS())));
+                this.dumpStack('[stack dump]')
                 break;
+            case 'mark':
+                this.push(new Tombstone());
+                break;
+            case 'sweep':
+                let done = false;
+                while (this.machine.stack.length > 0 && !done) {
+                    if (this.machine.peek() instanceof Tombstone) {
+                        done = true;
+                    }
+                    this.machine.pop();
+                }
+                break;
+            // case 'trace':
             default: assertNever(op);
         }
+    }
+
+    private dumpStack(message="Stack") {
+        console.log(message + ": " + this.machine.stack.map(val => JSON.stringify(val.toJS())));
     }
 
     private indexForLabel(label: string): number | null {
