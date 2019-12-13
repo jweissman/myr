@@ -3,12 +3,6 @@ import { Algebra } from "./Algebra";
 import { DB } from "./DB";
 
 export default class Machine extends AbstractMachine {
-    selfSet(): void {
-        throw new Error("Method not implemented.");
-    }
-    selfGet(): void {
-        throw new Error("Method not implemented.");
-    }
     stack: Array<Value> = [];
 
     constructor(private algebra: Algebra) { //}, private db: DB<T, string>) {
@@ -143,9 +137,9 @@ export default class Machine extends AbstractMachine {
         this.stack.pop();
         let theArray = this.stackTop as MyrArray;
         this.stack.pop();
-        // console.log("ARRAY PUT", { valueToPush, indexToAssign, theArray })
+        //console.log("ARRAY PUT", { valueToPush, indexToAssign, theArray })
         theArray.elements[indexToAssign.value] = valueToPush;
-        this.stack.push(theArray);
+        // this.stack.push(theArray);
     }
 
     arrayGet(): void {

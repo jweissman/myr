@@ -274,6 +274,9 @@ class Interpreter<T> {
                     if (instruction.arity) {
                         let args = this.machine.topN(instruction.arity);
                         fn(...args);
+                        for (let i=0; i<instruction.arity-1; i++) {
+                            this.machine.pop();
+                        }
                     } else {
                         fn()
                     }

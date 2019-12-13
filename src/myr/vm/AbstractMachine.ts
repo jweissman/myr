@@ -42,13 +42,15 @@ export class MyrFunction extends MyrObject {
 }
 
 export class MyrNil extends MyrObject {
-    toJS(): null { return null; }
+    toJS(): string { return "nil"; }
 }
 
 export class MyrArray extends MyrObject {
     constructor(public elements: MyrObject[] = []) {
         super();
+        // this.members.put("length", new MyrFunction()); //new MyrNumeric(4321))
     } 
+
     toJS() {
         return this.elements.map(elem => elem.toJS());
     }

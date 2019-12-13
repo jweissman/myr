@@ -97,18 +97,19 @@ describe(Machine, () => {
     })
 
     it('array assembly', () => {
+        let db = new SimpleDB();
         machine.push(new MyrArray([]))
+        machine.store("arr", db)
         machine.push(new MyrNumeric(0)) // index
         machine.push(new MyrString("hello")) // value
         machine.arrayPut();
 
-        // new array is now at top of stack
+        machine.load("arr", db)
         machine.push(new MyrNumeric(1)) // index
         machine.push(new MyrString("world")) // value
         machine.arrayPut();
-        // target array / index / value to put AT the index :)
 
-        // machine.arrayPut()
+        machine.load("arr", db)
         expect(machine.peek()).toEqual(new MyrArray([
             new MyrString("hello"),
             new MyrString("world"),

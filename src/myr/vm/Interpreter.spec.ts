@@ -460,7 +460,8 @@ describe(Interpreter, () => {
     it('object', () => {
         // MyrFunction
         interpreter.run([
-            instruct('push', { value: new MyrObject('test-obj') }),
+            instruct('construct'),
+            // instruct('push', { value: new MyrObject('test-obj') }),
             instruct('store', { key: 'test' }),
             // instruct('construct'), //, { value: new MyrObject() }),
             instruct('load', { key: 'test' }),
