@@ -25,7 +25,9 @@ export type OpCode = 'push'
                    | 'hash_put'
                 //    | 'push_self'
                 //    | 'pop_self'
-                   | 'send'      // .a
+                  //  | 'send' 
+                   | 'send_attr' // .a
+                   | 'send_call' // .a()
                    | 'send_eq'   // .a=
                    | 'construct' // raw construct, put a new myr object on the stack
 

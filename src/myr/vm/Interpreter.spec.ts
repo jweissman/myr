@@ -469,7 +469,7 @@ describe(Interpreter, () => {
             instruct('send_eq', { key: 'age' }),
             // instruct('pop_self'),
             instruct('load', { key: 'test' }),
-            instruct('send', { key: 'age' }),
+            instruct('send_attr', { key: 'age' }),
             // myr object with age=33 property should be on the stack
         ])
         expect(interpreter.result).toEqual(33)

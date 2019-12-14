@@ -197,26 +197,81 @@ class Interpreter<T> {
         }
     }
 
+    private sendEq(instruction: Instruction) {
+        let value = this.machine.peek();
+        this.machine.pop();
+        let recv = this.machine.peek();
+        this.machine.pop();
+        let msg = instruction.key;
+        if (msg) {
+            debugger;
+            if (recv instanceof MyrHash) {
+                this.push(recv);
+                this.push(new MyrString(msg));
+                this.push(value);
+                this.machine.hashPut();
+            } else {
+                // console.log("SEND_EQ", { recv, msg, value })
+                recv.members.put(msg, value);
+            }
+        } else {
+            throw new Error("must provide a key for send_eq?")
+        }
+    }
+
+    private send(instruction: Instruction) {
+        let receiver = this.machine.peek();
+        if (receiver instanceof MyrHash && instruction.key) {
+            this.machine.push(new MyrString(instruction.key));
+            this.machine.hashGet();
+            // if (this.machine.stackTop instanceof MyrFunction) {
+            //     // we should call the function?
+            //     // this.invoke();
+            // } else {
+            //     if (this.machine.stackTop === undefined) {
+            //         this.machine.pop(); // replace with nil?
+            //     }
+            // }
+        } else { // assume we're an object
+            this.machine.pop();
+            let message = (instruction.key);
+            debugger;
+
+            if (message && receiver.members.get(message)) {
+                let member = receiver.members.get(message);
+                // if (member instanceof MyrFunction) {
+                //     this.push(member);
+                //     // this.invoke(receiver);
+                // } else {
+                this.push(member);
+                // }
+            } else {
+                throw new Error("Method missing on " + receiver.toJS() + ": " + message);
+            }
+        }
+        return receiver;
+    }
+
     lambdaCount: number = 0;
     private execute(instruction: Instruction) {
         let op: OpCode = instruction.op;
         switch (op) {
             case 'noop': break;
-            case 'push':  this.push(instruction.value); break;
-            case 'pop':   this.machine.pop(); break;
+            case 'push': this.push(instruction.value); break;
+            case 'pop': this.machine.pop(); break;
             case 'dup':
                 this.machine.push(this.machine.stackTop);
                 break;
-            case 'swap':  this.machine.swap(); break;
-            case 'dec':   this.machine.decrement(); break;
-            case 'inc':   this.machine.increment(); break;
-            case 'add':   this.machine.add(); break;
-            case 'sub':   this.machine.subtract(); break;
-            case 'mul':   this.machine.multiply(); break;
-            case 'div':   this.machine.divide(); break;
-            case 'pow':   this.machine.exponentiate(); break;
-            case 'and':   this.machine.and(); break;
-            case 'or':    this.machine.or(); break;
+            case 'swap': this.machine.swap(); break;
+            case 'dec': this.machine.decrement(); break;
+            case 'inc': this.machine.increment(); break;
+            case 'add': this.machine.add(); break;
+            case 'sub': this.machine.subtract(); break;
+            case 'mul': this.machine.multiply(); break;
+            case 'div': this.machine.divide(); break;
+            case 'pow': this.machine.exponentiate(); break;
+            case 'and': this.machine.and(); break;
+            case 'or': this.machine.or(); break;
             case 'not':   this.machine.not(); break;
             case 'cmp':   this.machine.compare(); break;
             case 'cmp_gt': 
@@ -307,55 +362,17 @@ class Interpreter<T> {
             case 'arr_put': this.machine.arrayPut(); break;
             case 'hash_get': this.machine.hashGet(); break;
             case 'hash_put': this.machine.hashPut(); break;
-            case 'send_eq':
-                let value = this.machine.peek();
-                this.machine.pop();
-                let recv = this.machine.peek();
-                this.machine.pop();
-                let msg = instruction.key;
-                if (msg) {
-                    debugger;
-                    if (recv instanceof MyrHash) {
-                        this.push(recv);
-                        this.push(new MyrString(msg));
-                        this.push(value);
-                        this.machine.hashPut();
-                    } else {
-                        // console.log("SEND_EQ", { recv, msg, value })
-                        recv.members.put(msg, value);
-                    }
-                } else {
-                    throw new Error("must provide a key for send_eq?")
-                }
-                break;
-            case 'send': 
-                let receiver = this.machine.peek();
-                if (receiver instanceof MyrHash && instruction.key) {
-                    this.machine.push(new MyrString(instruction.key));
-                    this.machine.hashGet();
-                    if (this.machine.stackTop instanceof MyrFunction) {
-                        // we should call the function?
-                        this.invoke();
-                    } else {
-                        if (this.machine.stackTop === undefined) {
-                            this.machine.pop(); // replace with nil?
-                        }
-                    }
-                } else { // assume we're an object
-                    this.machine.pop();
-                    let message = (instruction.key);
-                    if (message && receiver.members.get(message)) {
-                        let member = receiver.members.get(message);
-                        if (member instanceof MyrFunction) {
-                            this.push(member);
-                            this.invoke(receiver);
-                        } else {
-                            this.push(member);
-                        }
-                    } else {
-                        throw new Error("Method missing on " + receiver.toJS() + ": " + message);
-                    }
-                }
+            // case 'send':
+            //     let r = this.send(instruction);
+            //     if (this.machine.peek() instanceof MyrFunction) {
+            //         this.invoke(r);
+            //     }
+            //     break;
+            case 'send_eq': this.sendEq(instruction); break;
+            case 'send_attr': this.send(instruction); break;
+            case 'send_call': 
+                let receiver = this.send(instruction); 
+                this.invoke(receiver);
                 break;
             case 'construct':
                 let newObj = new MyrObject();
