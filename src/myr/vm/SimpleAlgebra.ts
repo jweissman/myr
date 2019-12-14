@@ -48,6 +48,7 @@ export class SimpleAlgebra extends Algebra {
 
     compare(x: number, y: number): 0 | 1 | -1 {
         let result: 0 | 1 | -1 = 0;
+        // if (x instanceof MyrObject)
         if (x > y) {
             result = 1;
         } else if (x < y) {

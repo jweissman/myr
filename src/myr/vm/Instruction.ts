@@ -36,7 +36,7 @@ export function instruct(
 function prettyValue(value: Value) {
     let js = value.toJS();
     if (typeof js === "object") {
-        return `${value.name} (${value.constructor.name})`; // JSON.stringify(js);
+        return `${value.constructor.name}`; // JSON.stringify(js);
     } else {
         return js;
     }

@@ -2,7 +2,7 @@ import Interpreter, { Compiler } from "./Interpreter"
 import { SimpleAlgebra } from "./SimpleAlgebra";
 import { instruct, Instruction } from "./Instruction";
 import assertNever from "assert-never";
-import { MyrNumeric, MyrBoolean, MyrObject, MyrFunction } from "./AbstractMachine";
+import { MyrNumeric, MyrBoolean, MyrObject, MyrFunction, MyrNil } from "./AbstractMachine";
 
 // support compile spec
 abstract class AbstractASTNode { abstract get gen(): Instruction[] }
@@ -473,5 +473,25 @@ describe(Interpreter, () => {
             // myr object with age=33 property should be on the stack
         ])
         expect(interpreter.result).toEqual(33)
+    })
+
+    it('object eq', () => {
+        // MyrFunction
+        interpreter.run([
+            instruct('construct'),
+            // instruct('push', { value: new MyrObject('test-obj') }),
+            instruct('store', { key: 'test' }),
+            // instruct('construct'), //, { value: new MyrObject() }),
+            instruct('load', { key: 'test' }),
+            instruct('push', { value: new MyrNumeric(33) }),
+            instruct('send_eq', { key: 'age' }),
+            // instruct('pop_self'),
+            instruct('load', { key: 'test' }),
+            // myr object with age=33 property should be on the stack
+            instruct('push', { value: new MyrNil() }),
+            instruct('cmp_eq'),
+            // we are going to test whether this obj is eq nil (should be false)
+        ])
+        expect(interpreter.result).toEqual(false)
     })
 })

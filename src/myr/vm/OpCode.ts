@@ -33,6 +33,7 @@ export type OpCode = 'push'
                    | 'cmp_gt'
                    | 'cmp_lt'
                    | 'cmp_eq'
+                   | 'cmp_neq'
 
                    | 'jump'
                    | 'jump_if_gt'

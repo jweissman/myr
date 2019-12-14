@@ -7,13 +7,24 @@ function omit(key: string, obj: object): object {
     return rest;
 }
 
-// let objectCount = 0;
+let objectCount = 0;
 export class MyrObject {
     public members: DB = new SimpleDB();
     // private _objectId: number; // = objectCount++;
-    constructor(public name: string='') {
+    constructor() { //public name: string='') {
+        // this.members.put("class", new MyrClass("BasicObject"))
         // this._objectId = objectCount++;
     }
+
+    get value(): any {
+        let comparableMembers = omit("initialize", this.members.toJS());
+        return comparableMembers;
+    }
+
+    // equals(second: MyrObject): boolean {
+    //     return this._objectId === second._objectId;
+    //     // throw new Error("Method not implemented.");
+    // }
     // klass!: MyrClass;
     toJS(): any {
         let printableMembers = omit("initialize",
@@ -23,16 +34,19 @@ export class MyrObject {
 }
 
 export class MyrNumeric extends MyrObject {
-    constructor(public value: number) { super(); }
-    toJS(): number { return this.value; }
+    constructor(public val: number) { super(); }
+    get value() { return this.val; }
+    toJS(): number { return this.val; }
 }
 export class MyrString extends MyrObject {
-    constructor(public value: string) { super(); }
-    toJS(): string { return this.value; }
+    constructor(public val: string) { super(); }
+    get value() { return this.val; }
+    toJS(): string { return this.val; }
 }
 export class MyrBoolean extends MyrObject {
-    constructor(public value: boolean) { super(); }
-    toJS(): boolean { return this.value; }
+    constructor(public val: boolean) { super(); }
+    get value() { return this.val; }
+    toJS(): boolean { return this.val; }
 }
 export class MyrFunction extends MyrObject {
     constructor(public label: string, public closure: DB = new SimpleDB()) {
@@ -43,6 +57,7 @@ export class MyrFunction extends MyrObject {
 
 export class MyrNil extends MyrObject {
     toJS(): string { return "nil"; }
+    get value() { return null; }
 }
 
 export class MyrArray extends MyrObject {

@@ -55,11 +55,9 @@ class Interpreter<T> {
         this.install(program);
         let startTime = new Date().getTime();
         this.ip = this.indexForLabel("main") || 0;
-        // console.debug('\n---\n'+prettyProgram(program)+'\n---\n');
-        // let maxSteps = 1024 * 1024 * 256; // halt if we ran away :D
         let steps = 0;
         let stackLengths = []
-        while (this.ip < this.currentProgram.length) { //} && steps++ < maxSteps) {
+        while (this.ip < this.currentProgram.length) {
             steps += 1;
             let instruction = this.currentInstruction;
             if (this.trace) {
@@ -70,29 +68,26 @@ class Interpreter<T> {
             }
 
             if (this.trace && this.machine.stack.length) {
-
                 this.dumpStack('stack before')
-            //     console.log(" (stack before: " + this.machine.stack + ")");
             }
-            this.execute(instruction);
+            try {
+                this.execute(instruction);
+            } catch(e) {
+                console.warn("Error executing instruction: " + prettyInstruction(instruction));
+                console.debug(this.currentProgram)
+                throw(e);
+            }
             if (this.trace && this.machine.stack.length) {
-                // console.log(chalk.white("stack after instruction"))
                 this.dumpStack('stack after')
-                // console.log(
-                //     " (stack after: " + this.machine.stack.map(elem => elem.toJS()) + ")"
-                // );
             }
             this.ip++;
             stackLengths.push(this.machine.stack.length)
         }
         let endTime = new Date().getTime();
         let elapsed = endTime - startTime;
-        // if (this.trace) {
         if (elapsed > 10) {
             console.log(`---> Ran ${steps} instructions in ${elapsed}ms: ${steps / elapsed} ops/ms`)
         }
-        // console.log(`---> Avg stack size: ${average(stackLengths)}`)
-        // }
     }
 
     private get currentInstruction() { return this.currentProgram[this.ip]; }
@@ -237,10 +232,28 @@ class Interpreter<T> {
                 this.push(new MyrBoolean(lt));
                 break;
             case 'cmp_eq': 
+                // let top = this.machine.peek();
+                // if (top instanceof MyrNumeric || top instanceof MyrBoolean || top instanceof MyrString) {
+                    this.machine.compare();
+                    let eq: boolean = (this.machine.peek() as MyrNumeric).value === 0;
+                    this.machine.pop();
+                    this.push(new MyrBoolean(eq));
+                // } else {
+                    // send object equals??
+                    // this
+                    // let [top,second] = this.machine.topTwo;
+                    // this.machine.objCompare();
+                    // let eq: boolean = (this.machine.peek() as MyrNumeric).value === 0;
+                    // this.machine.pop();
+                    // this.push(new MyrBoolean(eq));
+                    // this.push(new MyrBoolean((top as MyrObject).equals(second)))
+                // }
+                break;
+            case 'cmp_neq': 
                 this.machine.compare();
-                let eq: boolean = (this.machine.peek() as MyrNumeric).value === 0;
+                let neq: boolean = (this.machine.peek() as MyrNumeric).value != 0;
                 this.machine.pop();
-                this.push(new MyrBoolean(eq));
+                this.push(new MyrBoolean(neq));
                 break;
             case 'store':
                 this.store(instruction.key);

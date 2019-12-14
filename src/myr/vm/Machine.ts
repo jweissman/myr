@@ -64,6 +64,16 @@ export default class Machine extends AbstractMachine {
         this.stack.push(new MyrNumeric(result));
     }
 
+    // objCompare(): void {
+    //     let top = this.stackTop as MyrObject;
+    //     this.stack.pop()
+    //     let second = this.stackTop as MyrObject;
+    //     this.stack.pop()
+    //     // let [a,b] = this.topTwo;
+    //     let result: number = second.equals(top); //this.algebra.compare(second.value, top.value);
+    //     this.stack.push(new MyrNumeric(result));
+    // }
+
     decrement() {
         let top = (this.stackTop as MyrNumeric).value; //number;
         this.stack.pop();
