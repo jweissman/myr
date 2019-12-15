@@ -16,8 +16,7 @@ export class SimpleDB extends DB {
         return db;
     }
 
-    get(key: string): Value {
-        // we can see through to outer frames, but favor our values?
+    find(key: string): Value | null {
         let retrievedValue = this.store[key];
         if (retrievedValue !== undefined) {
             return retrievedValue;
@@ -25,12 +24,41 @@ export class SimpleDB extends DB {
             let matchingBag = this.underlyingStores.find(store => store.get(key) !== undefined);
             if (matchingBag) {
                 return matchingBag.get(key)
-            } else {
-                // return new MyrNil()
-                console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStores })
-                throw new Error("No such variable defined: " + key)
             }
         }
+        return null;
+    }
+
+    has(key: string): boolean {
+        if (this.find(key)) {
+            return true;
+        }
+        return false;
+    }
+
+    get(key: string): Value {
+        let val = this.find(key);
+        if (val) {
+            return val;
+        } else {
+            // return new MyrNil()
+            console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStores })
+            throw new Error("No such variable defined: " + key)
+        }
+        // we can see through to outer frames, but favor our values?
+        // /let retrievedValue = this.store[key];
+        // /if (retrievedValue !== undefined) {
+        // /    return retrievedValue;
+        // /} else {
+        // /    let matchingBag = this.underlyingStores.find(store => store.get(key) !== undefined);
+        // /    if (matchingBag) {
+        // /        return matchingBag.get(key)
+        // /    } else {
+        // /        // return new MyrNil()
+        // /        console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStores })
+        // /        throw new Error("No such variable defined: " + key)
+        // /    }
+        // /}
     }
 
     put(key: string, value: Value): void {

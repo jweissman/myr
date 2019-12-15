@@ -16,7 +16,8 @@ export class MyrObject {
     toJS(): any {
         let printableMembers = omit("initialize",
             omit("class", this.members.toJS()));
-        return this.members.get("class").name + "(" + JSON.stringify(printableMembers) + ")";
+        let klass = (this.members as SimpleDB).has("class") ? this.members.get("class").name : "anonymous";
+        return klass + "(" + JSON.stringify(printableMembers) + ")";
     };
 }
 
@@ -60,7 +61,9 @@ export class MyrArray extends MyrObject {
     }
 }
 
-export class Tombstone extends MyrObject {}
+export class Tombstone extends MyrObject {
+    toJS() { return "tombstone"; }
+}
 
 //  MyrTuple // :D
 

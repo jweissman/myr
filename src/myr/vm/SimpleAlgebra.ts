@@ -7,6 +7,8 @@ export class SimpleAlgebra extends Algebra {
 
     or(x: boolean, y: boolean): boolean {
         // if (x instanceof MyrNil) {}
+        // if (x) { return x; }
+        // return y;
         return x || y;
     }
 

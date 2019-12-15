@@ -5,7 +5,7 @@ import { DB } from "./DB";
 export default class Machine extends AbstractMachine {
     stack: Array<Value> = [];
 
-    constructor(private algebra: Algebra) { //}, private db: DB<T, string>) {
+    constructor(private algebra: Algebra) {
         super();
     }
 
@@ -19,7 +19,6 @@ export default class Machine extends AbstractMachine {
 
     topN(arity: number): Value[] {
         return this.stack.slice(this.stack.length - arity);
-        // throw new Error("Method not implemented.");
     }
 
     topIsZero() { return this.algebra.isZero((this.stackTop as MyrNumeric).value); }
@@ -59,31 +58,19 @@ export default class Machine extends AbstractMachine {
         this.stack.pop()
         let second = this.stackTop as MyrNumeric;
         this.stack.pop()
-        // let [a,b] = this.topTwo;
         let result: number = this.algebra.compare(second.value, top.value);
         this.stack.push(new MyrNumeric(result));
     }
 
-    // objCompare(): void {
-    //     let top = this.stackTop as MyrObject;
-    //     this.stack.pop()
-    //     let second = this.stackTop as MyrObject;
-    //     this.stack.pop()
-    //     // let [a,b] = this.topTwo;
-    //     let result: number = second.equals(top); //this.algebra.compare(second.value, top.value);
-    //     this.stack.push(new MyrNumeric(result));
-    // }
-
     decrement() {
-        let top = (this.stackTop as MyrNumeric).value; //number;
+        let top = (this.stackTop as MyrNumeric).value;
         this.stack.pop();
         let result = this.algebra.decrement(top);
         this.stack.push(new MyrNumeric(result));
     }
 
     increment() {
-        // let top = this.stackTop as number;
-        let top = (this.stackTop as MyrNumeric).value; //number;
+        let top = (this.stackTop as MyrNumeric).value;
         this.stack.pop();
         let result = this.algebra.increment(top);
         this.stack.push(new MyrNumeric(result));
@@ -112,10 +99,7 @@ export default class Machine extends AbstractMachine {
     store(key: string, db: DB): void {
         let top = this.peek();
         if (top !== undefined) {
-            // console.log("PUT " + key + " into " + JSON.stringify(db))
             db.put(key, top)
-            // this.pop();
-            // console.log("(after) PUT " + key + " into " + JSON.stringify(db))
         } else {
             throw new Error("Called #store on an empty stack.");
         }
@@ -130,6 +114,10 @@ export default class Machine extends AbstractMachine {
     }
 
     or() {
+        // short circuit?
+        // let [right, left] = this.topTwo as [MyrObject,MyrObject];
+        // if left is truthy we're done? otherwise return the right value?
+        // this.
         return this.binaryOpLog(this.algebra.or);
     }
 
@@ -140,7 +128,6 @@ export default class Machine extends AbstractMachine {
     }
 
     arrayPut() {
-        // console.log("ARRAY PUT", { stack: this.stack })
         let valueToPush = this.stackTop;
         this.stack.pop();
         let indexToAssign = this.stackTop as MyrNumeric;

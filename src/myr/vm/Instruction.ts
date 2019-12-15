@@ -46,7 +46,7 @@ function prettyValue(value: Value) {
 
 let pad = 12;
 export function prettyInstruction(inst: Instruction) {
-    let arg = (inst.value && prettyValue(inst.value)) || inst.key || inst.target || inst.jsMethod
+    let arg = (inst.value && prettyValue(inst.value)) || inst.key || inst.target || (inst.jsMethod && inst.jsMethod.name) || (inst.body && JSON.stringify(inst.body))
     let result;
     if (arg && !(arg === undefined)) {
         result = `${inst.op}(${(arg)})`.padEnd(pad);
@@ -55,7 +55,7 @@ export function prettyInstruction(inst: Instruction) {
     }
     if (inst.label) {
         if (inst.op === 'noop') {
-            return `.${inst.label}:`
+            return `${inst.label}:`
         } else {
             return "  " + chalk.blueBright(result) + chalk.gray('#' + inst.label)
         }

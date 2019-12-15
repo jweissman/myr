@@ -12,6 +12,10 @@ type Frame = { retAddr: number, db: DB, self: MyrObject }
 
 let main = new MyrObject();
 
+// abstract class AbstractASTNode {
+//     abstract inspect(): string;
+// }
+
 abstract class Compiler<T> {
     abstract generateCode(ast: T): Instruction[];
 }
@@ -371,7 +375,7 @@ class Interpreter<T> {
                         jsResult = fn()
                     }
                     
-                    if (jsResult && !(jsResult instanceof MyrNil)) {
+                    if (jsResult && (jsResult instanceof MyrObject)) {
                         this.push(jsResult);
                     }
                 }
@@ -411,7 +415,7 @@ class Interpreter<T> {
     }
 
     private dumpStack(message="Stack") {
-        console.log(message + ": " + this.machine.stack.map(val => JSON.stringify(val.toJS())));
+        console.log(message + ": " + this.machine.stack.map(val => (val.toJS())));
     }
 
     private indexForLabel(label: string): number | null {
