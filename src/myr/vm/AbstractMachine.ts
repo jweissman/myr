@@ -7,6 +7,7 @@ function omit(key: string, obj: object): object {
 }
 
 export class MyrObject {
+    public jsMethods: {[key: string]: Function} = {};
     public members: DB = new SimpleDB();
     get value(): any {
         let comparableMembers = omit("initialize", this.members.toJS());
@@ -19,6 +20,12 @@ export class MyrObject {
         let klass = (this.members as SimpleDB).has("class") ? this.members.get("class").name : "anonymous";
         return klass + "(" + JSON.stringify(printableMembers) + ")";
     };
+
+    equals(other: MyrObject): boolean {
+        let cmp = this.value === other.value
+        console.log("EQ?", cmp, this.value, other.value)
+        return cmp
+    }
 }
 
 export class MyrNumeric extends MyrObject {
@@ -56,9 +63,19 @@ export class MyrArray extends MyrObject {
         // this.members.put("length", new MyrFunction()); //new MyrNumeric(4321))
     } 
 
+    // get value() { return this.toJS() }
+
+    equals(other: MyrArray): boolean {
+        let cmp = this.elements.length === other.elements.length && this.elements.every((element,index) => this.elements[index].equals(other.elements[index]))
+        // console.log("EQ?", cmp, this.value, other.value)
+        return cmp
+    }
+
     toJS() {
         return this.elements.map(elem => elem.toJS());
     }
+
+    jsMethods = { length: () => this.elements.length }
 }
 
 export class Tombstone extends MyrObject {

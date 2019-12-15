@@ -110,10 +110,10 @@ describe(Machine, () => {
         machine.arrayPut();
 
         machine.load("arr", db)
-        expect(machine.peek()).toEqual(new MyrArray([
+        expect(machine.peek().equals(new MyrArray([
             new MyrString("hello"),
             new MyrString("world"),
-        ]))
+        ]))).toBe(true)
     })
 
     it('array index', () => {
@@ -168,11 +168,11 @@ describe(Machine, () => {
         machine.push(hash);
         machine.push(new MyrString("scores"));
         machine.hashGet();
-        expect(machine.peek()).toEqual(new MyrArray([
+        expect(machine.peek().equals(new MyrArray([
             new MyrNumeric(123),
             new MyrNumeric(89),
             new MyrNumeric(95),
-        ]));
+        ]))).toBe(true);
     })
 
     // it('object mgmt', () => {

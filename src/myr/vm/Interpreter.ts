@@ -7,6 +7,7 @@ import { SimpleDB } from './SimpleDB';
 import { OpCode } from './OpCode';
 import { Value, MyrNumeric, MyrFunction, MyrBoolean, MyrObject, MyrString, MyrHash, MyrNil, Tombstone } from './AbstractMachine';
 import chalk from 'chalk';
+import { Controller } from './Controller';
 
 type Frame = { retAddr: number, db: DB, self: MyrObject }
 
@@ -24,6 +25,7 @@ class Interpreter<T> {
     public trace: boolean = false;
 
     public machine: Machine;
+    public controls: Controller;
 
     private ip: number = -1;
     private frames: Frame[] = [{ retAddr: -1, db: new SimpleDB(), self: main }]
@@ -31,6 +33,7 @@ class Interpreter<T> {
 
     constructor(algebra: Algebra, private compiler: Compiler<T>) {
         this.machine = new Machine(algebra);
+        this.controls = new Controller(this.machine);
     }
 
     private get topFrame() { return this.frames[this.frames.length-1]; }
@@ -102,53 +105,10 @@ class Interpreter<T> {
         }
     }
 
+    get rawResult() { return this.controls.rawResult; }
+    get result() { return this.controls.result; }
     private get currentInstruction() { return this.currentProgram[this.ip]; }
 
-    get rawResult() { 
-        let value = this.machine.peek();
-        if (value !== undefined) {
-            this.machine.pop();
-            return value;
-        } else {
-            return null;
-        }
-    }
-
-    get result() {
-        let raw = this.rawResult
-        if (raw !== null) {
-            return raw.toJS();
-        } else {
-            return null;
-        }
-    }
-
-    private push(value: Value | undefined) {
-        if (value !== undefined) {
-            this.machine.push(value);
-        } else {
-            throw new Error("Push must have a value")
-        }
-    }
-
-    private store(key: string | undefined) {
-        if (key !== undefined) {
-            // console.log("STORE", { key, db: this.db })
-            this.machine.store(key, this.db);
-            // this.machine.pop()
-        } else {
-            throw new Error("Must have a key to reference stored variable by")
-        }
-    }
-
-    private load(key: string | undefined) {
-        if (key) {
-            // console.log("LOAD", { key, db: JSON.stringify(this.db) })
-            this.machine.load(key, this.db);
-        } else {
-            throw new Error("Must have a key to reference loaded variable by")
-        }
-    }
 
     private jump(target: string | undefined) {
         if (target) {
@@ -224,80 +184,18 @@ class Interpreter<T> {
                 instruct('noop', { label }),
                 ...code,
             ]
-            this.push(functionRef);
+            this.controls.push(functionRef);
         } else {
             throw new Error("asked to gen code without code (ast expected in instr. 'body')")
         }
     }
 
-    private sendEq(instruction: Instruction) {
-        let value = this.machine.peek();
-        this.machine.pop();
-        let recv = this.machine.peek();
-        this.machine.pop();
-        let msg = instruction.key;
-        if (msg) {
-            if (recv instanceof MyrHash) {
-                this.push(recv);
-                this.push(new MyrString(msg));
-                this.push(value);
-                this.machine.hashPut();
-            } else {
-                recv.members.put(msg, value);
-            }
-        } else {
-            throw new Error("must provide a key for send_eq?")
-        }
-    }
-
-    private send(instruction: Instruction) {
-        let receiver = this.machine.peek();
-        if (receiver instanceof MyrHash && instruction.key) {
-            this.machine.push(new MyrString(instruction.key));
-            this.machine.hashGet();
-        } else { // assume we're an object
-            this.machine.pop();
-            let message = (instruction.key);
-            if (message && receiver.members.get(message)) {
-                let member = receiver.members.get(message);
-                this.push(member);
-            } else {
-                throw new Error("Method missing on " + receiver.toJS() + ": " + message);
-            }
-        }
-        return receiver;
-    }
-
-    private mark() {
-        this.push(new Tombstone());
-    }
-
-    private sweep() {
-        let done = false;
-        while (this.machine.stack.length > 0 && !done) {
-            if (this.machine.peek() instanceof Tombstone) {
-                done = true;
-            }
-            this.machine.pop();
-        }
-    }
-
-    private execute(instruction: Instruction) {
-        // try {
-            this.executeUnsafe(instruction);
-        // } catch (e) {
-        //     this.dumpStack(e.message);
-        //     // console.trace(e.message);
-        //     throw(e)
-        // }
-    }
-
     lambdaCount: number = 0;
-    private executeUnsafe(instruction: Instruction) {
+    private execute(instruction: Instruction) {
         let op: OpCode = instruction.op;
         switch (op) {
             case 'noop': break;
-            case 'push': this.push(instruction.value); break;
+            case 'push': this.controls.push(instruction.value); break;
             case 'pop': this.machine.pop(); break;
             case 'dup':
                 this.machine.push(this.machine.stackTop);
@@ -314,39 +212,13 @@ class Interpreter<T> {
             case 'or': this.machine.or(); break;
             case 'not':   this.machine.not(); break;
             case 'cmp':   this.machine.compare(); break;
-            case 'cmp_gt': 
-                this.machine.compare();
-                let gt: boolean = (this.machine.peek() as MyrNumeric).value === 1;
-                this.machine.pop();
-                this.push(new MyrBoolean(gt));
-                break;
-            case 'cmp_lt': 
-                this.machine.compare();
-                let lt: boolean = (this.machine.peek() as MyrNumeric).value === -1;
-                this.machine.pop();
-                this.push(new MyrBoolean(lt));
-                break;
-            case 'cmp_eq': 
-                this.machine.compare();
-                let eq: boolean = (this.machine.peek() as MyrNumeric).value === 0;
-                this.machine.pop();
-                this.push(new MyrBoolean(eq));
-                break;
-            case 'cmp_neq': 
-                this.machine.compare();
-                let neq: boolean = (this.machine.peek() as MyrNumeric).value != 0;
-                this.machine.pop();
-                this.push(new MyrBoolean(neq));
-                break;
-            case 'store':
-                this.store(instruction.key);
-                break;
-            case 'load': 
-                if (instruction.key === 'self') {
-                    this.push(this.self);
-                } else {
-                    this.load(instruction.key);
-                }
+            case 'cmp_gt': this.controls.compare(1); break;
+            case 'cmp_lt': this.controls.compare(-1); break;
+            case 'cmp_eq': this.controls.compare(0); break;
+            case 'cmp_neq': this.controls.compare(0,(l,r)=>l!=r); break;
+            case 'store': this.controls.store(instruction.key, this.db); break;
+            case 'load':
+                this.controls.load(instruction.key, this.db, { self: this.self });
                 break;
             case 'jump':  this.jump(instruction.target); break;
             case 'jump_if_gt':
@@ -363,21 +235,7 @@ class Interpreter<T> {
             case 'invoke': this.invoke(); break;
             case 'exec':
                 if (instruction.jsMethod) {
-                    let fn = instruction.jsMethod;
-                    let jsResult = null;
-                    if (instruction.arity) {
-                        let args = this.machine.topN(instruction.arity);
-                        jsResult = fn(...args);
-                        for (let i=0; i<instruction.arity; i++) {
-                            this.machine.pop();
-                        }
-                    } else {
-                        jsResult = fn()
-                    }
-                    
-                    if (jsResult && (jsResult instanceof MyrObject)) {
-                        this.push(jsResult);
-                    }
+                    this.controls.callExec(instruction.jsMethod, instruction.arity || 0);
                 }
                 break;
             case 'compile': this.compile(instruction.body); break;
@@ -392,15 +250,15 @@ class Interpreter<T> {
             case 'arr_put': this.machine.arrayPut(); break;
             case 'hash_get': this.machine.hashGet(); break;
             case 'hash_put': this.machine.hashPut(); break;
-            case 'send_eq': this.sendEq(instruction); break;
-            case 'send_attr': this.send(instruction); break;
+            case 'send_eq':this.controls.sendEq(instruction.key); break;
+            case 'send_attr': this.controls.send(instruction.key); break;
             case 'send_call': 
-                let receiver = this.send(instruction); 
+                let receiver = this.controls.send(instruction.key); 
                 this.invoke(receiver);
                 break;
             case 'construct':
                 let newObj = new MyrObject();
-                this.push(newObj);
+                this.controls.push(newObj);
                 break;
             case 'dump':
                 if (instruction.key) {
@@ -408,8 +266,8 @@ class Interpreter<T> {
                 }
                 this.dumpStack('[stack dump]')
                 break;
-            case 'mark': this.mark(); break;
-            case 'sweep': this.sweep(); break;
+            case 'mark': this.controls.mark(); break;
+            case 'sweep': this.controls.sweep(); break;
             default: assertNever(op);
         }
     }
