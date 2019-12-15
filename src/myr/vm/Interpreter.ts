@@ -73,13 +73,21 @@ class Interpreter<T> {
             try {
                 this.execute(instruction);
             } catch(e) {
-                console.warn("Error executing instruction: " + prettyInstruction(instruction));
-                console.debug(this.currentProgram)
+                console.warn(
+                    chalk.red("Error executing instruction " + prettyInstruction(instruction) + ":"+ e.message)
+                )
+                console.debug(this.currentProgram.slice(this.ip-5,this.ip+5))
                 throw(e);
             }
             if (this.trace && this.machine.stack.length) {
                 this.dumpStack('stack after')
             }
+
+            // this.store(this.result)
+            if (this.machine.stack.length) {
+                this.machine.store("_", this.db);
+            }
+
             this.ip++;
             stackLengths.push(this.machine.stack.length)
         }
@@ -92,13 +100,21 @@ class Interpreter<T> {
 
     private get currentInstruction() { return this.currentProgram[this.ip]; }
 
-    get result() {
+    get rawResult() { 
         let value = this.machine.peek();
         if (value !== undefined) {
             this.machine.pop();
-            return value.toJS();
+            return value;
         } else {
-            // this.machine.pop();
+            return null;
+        }
+    }
+
+    get result() {
+        let raw = this.rawResult
+        if (raw !== null) {
+            return raw.toJS();
+        } else {
             return null;
         }
     }
@@ -115,6 +131,7 @@ class Interpreter<T> {
         if (key !== undefined) {
             // console.log("STORE", { key, db: this.db })
             this.machine.store(key, this.db);
+            // this.machine.pop()
         } else {
             throw new Error("Must have a key to reference stored variable by")
         }
@@ -179,10 +196,22 @@ class Interpreter<T> {
         }
     }
 
+    private deconflictLabel(label: string) {
+        this.lambdaCount += 1
+        if (this.currentProgram.find(instruction => instruction.label === label)) {
+            return `${label}[${this.lambdaCount}]`
+        } else {
+            return label;
+        }
+
+    }
+
     private compile(body: any) {
         if (body) {
             this.lambdaCount += 1
-            let label = `lambda-${this.lambdaCount}`;
+            let label = body.label
+                ? this.deconflictLabel(body.label)
+                : `lambda-${this.lambdaCount}`;
             let functionRef: MyrFunction = new MyrFunction( label, this.db.clone() )
             let code = this.compiler.generateCode(body)
             this.currentProgram = [
@@ -204,14 +233,12 @@ class Interpreter<T> {
         this.machine.pop();
         let msg = instruction.key;
         if (msg) {
-            debugger;
             if (recv instanceof MyrHash) {
                 this.push(recv);
                 this.push(new MyrString(msg));
                 this.push(value);
                 this.machine.hashPut();
             } else {
-                // console.log("SEND_EQ", { recv, msg, value })
                 recv.members.put(msg, value);
             }
         } else {
@@ -224,27 +251,12 @@ class Interpreter<T> {
         if (receiver instanceof MyrHash && instruction.key) {
             this.machine.push(new MyrString(instruction.key));
             this.machine.hashGet();
-            // if (this.machine.stackTop instanceof MyrFunction) {
-            //     // we should call the function?
-            //     // this.invoke();
-            // } else {
-            //     if (this.machine.stackTop === undefined) {
-            //         this.machine.pop(); // replace with nil?
-            //     }
-            // }
         } else { // assume we're an object
             this.machine.pop();
             let message = (instruction.key);
-            debugger;
-
             if (message && receiver.members.get(message)) {
                 let member = receiver.members.get(message);
-                // if (member instanceof MyrFunction) {
-                //     this.push(member);
-                //     // this.invoke(receiver);
-                // } else {
                 this.push(member);
-                // }
             } else {
                 throw new Error("Method missing on " + receiver.toJS() + ": " + message);
             }
@@ -252,8 +264,32 @@ class Interpreter<T> {
         return receiver;
     }
 
-    lambdaCount: number = 0;
+    private mark() {
+        this.push(new Tombstone());
+    }
+
+    private sweep() {
+        let done = false;
+        while (this.machine.stack.length > 0 && !done) {
+            if (this.machine.peek() instanceof Tombstone) {
+                done = true;
+            }
+            this.machine.pop();
+        }
+    }
+
     private execute(instruction: Instruction) {
+        // try {
+            this.executeUnsafe(instruction);
+        // } catch (e) {
+        //     this.dumpStack(e.message);
+        //     // console.trace(e.message);
+        //     throw(e)
+        // }
+    }
+
+    lambdaCount: number = 0;
+    private executeUnsafe(instruction: Instruction) {
         let op: OpCode = instruction.op;
         switch (op) {
             case 'noop': break;
@@ -287,22 +323,10 @@ class Interpreter<T> {
                 this.push(new MyrBoolean(lt));
                 break;
             case 'cmp_eq': 
-                // let top = this.machine.peek();
-                // if (top instanceof MyrNumeric || top instanceof MyrBoolean || top instanceof MyrString) {
-                    this.machine.compare();
-                    let eq: boolean = (this.machine.peek() as MyrNumeric).value === 0;
-                    this.machine.pop();
-                    this.push(new MyrBoolean(eq));
-                // } else {
-                    // send object equals??
-                    // this
-                    // let [top,second] = this.machine.topTwo;
-                    // this.machine.objCompare();
-                    // let eq: boolean = (this.machine.peek() as MyrNumeric).value === 0;
-                    // this.machine.pop();
-                    // this.push(new MyrBoolean(eq));
-                    // this.push(new MyrBoolean((top as MyrObject).equals(second)))
-                // }
+                this.machine.compare();
+                let eq: boolean = (this.machine.peek() as MyrNumeric).value === 0;
+                this.machine.pop();
+                this.push(new MyrBoolean(eq));
                 break;
             case 'cmp_neq': 
                 this.machine.compare();
@@ -312,14 +336,10 @@ class Interpreter<T> {
                 break;
             case 'store':
                 this.store(instruction.key);
-                // console.log("SELF AFTER STORE", { self: this.self, store: this.self.members.store })
                 break;
             case 'load': 
                 if (instruction.key === 'self') {
-                    // console.log("LOAD SELF", { self: this.self })
                     this.push(this.self);
-                    // load self as object???
-                    // throw new Error("Don't know self")
                 } else {
                     this.load(instruction.key);
                 }
@@ -332,21 +352,27 @@ class Interpreter<T> {
                 this.jump_z(instruction.target);
                 break;
             case 'call': 
-                this.frames.push({ retAddr: this.ip, db: new SimpleDB(this.db), self: this.self }) //, self: this.self })
+                let newFrame = { retAddr: this.ip, db: new SimpleDB(this.db), self: this.self }
+                this.frames.push(newFrame)
                 this.jump(instruction.target);
                 break;
             case 'invoke': this.invoke(); break;
             case 'exec':
                 if (instruction.jsMethod) {
                     let fn = instruction.jsMethod;
+                    let jsResult = null;
                     if (instruction.arity) {
                         let args = this.machine.topN(instruction.arity);
-                        fn(...args);
-                        for (let i=0; i<instruction.arity-1; i++) {
+                        jsResult = fn(...args);
+                        for (let i=0; i<instruction.arity; i++) {
                             this.machine.pop();
                         }
                     } else {
-                        fn()
+                        jsResult = fn()
+                    }
+                    
+                    if (jsResult && !(jsResult instanceof MyrNil)) {
+                        this.push(jsResult);
                     }
                 }
                 break;
@@ -362,12 +388,6 @@ class Interpreter<T> {
             case 'arr_put': this.machine.arrayPut(); break;
             case 'hash_get': this.machine.hashGet(); break;
             case 'hash_put': this.machine.hashPut(); break;
-            // case 'send':
-            //     let r = this.send(instruction);
-            //     if (this.machine.peek() instanceof MyrFunction) {
-            //         this.invoke(r);
-            //     }
-            //     break;
             case 'send_eq': this.sendEq(instruction); break;
             case 'send_attr': this.send(instruction); break;
             case 'send_call': 
@@ -376,7 +396,6 @@ class Interpreter<T> {
                 break;
             case 'construct':
                 let newObj = new MyrObject();
-                // newObj.members.put("initialize", new MyrNil())
                 this.push(newObj);
                 break;
             case 'dump':
@@ -385,19 +404,8 @@ class Interpreter<T> {
                 }
                 this.dumpStack('[stack dump]')
                 break;
-            case 'mark':
-                this.push(new Tombstone());
-                break;
-            case 'sweep':
-                let done = false;
-                while (this.machine.stack.length > 0 && !done) {
-                    if (this.machine.peek() instanceof Tombstone) {
-                        done = true;
-                    }
-                    this.machine.pop();
-                }
-                break;
-            // case 'trace':
+            case 'mark': this.mark(); break;
+            case 'sweep': this.sweep(); break;
             default: assertNever(op);
         }
     }

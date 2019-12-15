@@ -1,5 +1,4 @@
 import { DB } from "./DB";
-import { Instruction } from "./Instruction";
 import { SimpleDB } from "./SimpleDB";
 
 function omit(key: string, obj: object): object {
@@ -7,25 +6,13 @@ function omit(key: string, obj: object): object {
     return rest;
 }
 
-let objectCount = 0;
 export class MyrObject {
     public members: DB = new SimpleDB();
-    // private _objectId: number; // = objectCount++;
-    constructor() { //public name: string='') {
-        // this.members.put("class", new MyrClass("BasicObject"))
-        // this._objectId = objectCount++;
-    }
-
     get value(): any {
         let comparableMembers = omit("initialize", this.members.toJS());
         return comparableMembers;
     }
 
-    // equals(second: MyrObject): boolean {
-    //     return this._objectId === second._objectId;
-    //     // throw new Error("Method not implemented.");
-    // }
-    // klass!: MyrClass;
     toJS(): any {
         let printableMembers = omit("initialize",
             omit("class", this.members.toJS()));
@@ -41,7 +28,9 @@ export class MyrNumeric extends MyrObject {
 export class MyrString extends MyrObject {
     constructor(public val: string) { super(); }
     get value() { return this.val; }
-    toJS(): string { return this.val; }
+    toJS(): string {
+        return this.val;
+    }
 }
 export class MyrBoolean extends MyrObject {
     constructor(public val: boolean) { super(); }

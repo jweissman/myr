@@ -16,6 +16,8 @@ export type Instruction = {
     arity?: number; // really for builtins right now...
 
     body?: any;
+
+    // debug trace...?
 };
 
 export function instruct(
@@ -44,7 +46,7 @@ function prettyValue(value: Value) {
 
 let pad = 12;
 export function prettyInstruction(inst: Instruction) {
-    let arg = (inst.value && prettyValue(inst.value)) || inst.key || inst.target 
+    let arg = (inst.value && prettyValue(inst.value)) || inst.key || inst.target || inst.jsMethod
     let result;
     if (arg && !(arg === undefined)) {
         result = `${inst.op}(${(arg)})`.padEnd(pad);
