@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { OpCode } from "./OpCode";
-import { Value } from './AbstractMachine';
+import { Value, MyrObject } from './AbstractMachine';
 
 export type Instruction = {
     op: OpCode;
@@ -36,7 +36,7 @@ export function instruct(
 }
 
 function prettyValue(value: Value) {
-    let js = value.toJS();
+    let js = value instanceof MyrObject ? value.toJS() : value;
     if (typeof js === "object") {
         return `${value.constructor.name}`; // JSON.stringify(js);
     } else {

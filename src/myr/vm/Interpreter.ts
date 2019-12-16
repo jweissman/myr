@@ -259,8 +259,18 @@ class Interpreter<T> {
                 }
                 break;
             case 'construct':
-                let newObj = new MyrObject();
-                this.controls.push(newObj);
+                if (instruction.key) {
+                    this.controls.load(instruction.key, this.db, {})
+                    // this.controls.sendCall("new")
+                    let { receiver, called } = this.controls.send("new");
+                    // if (receiver) {
+                    if (!called) {
+                        this.invoke(receiver);
+                    }
+                } else {
+                    let newObj = new MyrObject();
+                    this.controls.push(newObj);
+                }
                 break;
             case 'dump':
                 if (instruction.key) {
@@ -275,7 +285,7 @@ class Interpreter<T> {
     }
 
     private dumpStack(message="Stack") {
-        console.log(message + ": " + this.machine.stack.map(val => (val.toJS())));
+        console.log(message + ": " + this.machine.stack.map(val => (val instanceof MyrObject ? val.toJS() : val)));
     }
 
     private indexForLabel(label: string): number | null {

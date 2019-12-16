@@ -135,7 +135,17 @@ export default class Machine extends AbstractMachine {
         let theArray = this.stackTop as MyrArray;
         this.stack.pop();
         //console.log("ARRAY PUT", { valueToPush, indexToAssign, theArray })
-        theArray.elements[indexToAssign.value] = valueToPush;
+        // let elems =theArray instanceof MyrArray 
+            // ? theArray.members.get("arr")
+            // : theArray.elements;
+        // if (theArray instanceof MyrArray) {
+        if (!theArray.members.has("arr")) {
+            theArray.members.put("arr", [])
+        }
+        theArray.members.get("arr")[indexToAssign.value] = valueToPush;
+        // } else {
+            // theArray.elements[indexToAssign.value] = valueToPush;
+        // }
         // this.stack.push(theArray);
     }
 
@@ -144,7 +154,8 @@ export default class Machine extends AbstractMachine {
         this.stack.pop();
         let theArray = this.stackTop as MyrArray;
         this.stack.pop();
-        let retrieved = theArray.elements[indexToRetrieve.value];
+        let elems = theArray.members.get("arr");
+        let retrieved = elems[indexToRetrieve.value];
         if (retrieved !== undefined) {
             this.stack.push(retrieved);
         } else {
@@ -164,7 +175,6 @@ export default class Machine extends AbstractMachine {
 
         hash.set(key, valueToAssign);
         this.stack.push(hash);
-        // throw new Error("Method not implemented.");
     }
 
     hashGet() {
@@ -175,29 +185,9 @@ export default class Machine extends AbstractMachine {
 
         let retrieved: MyrObject = hash.get(keyToRetrieve)
         // console.log({ key: keyToRetrieve, hash, retrieved })
-
         this.stack.push(retrieved);
     }
 
-    // objSet() {
-    //     let member = this.stackTop as MyrObject;
-    //     this.stack.pop();
-    //     let key = this.stackTop as MyrString;
-    //     this.stack.pop();
-    //     let obj = this.stackTop as MyrObject;
-    //     this.stack.pop();
-    //     obj.members.put(key.value, member);
-    //     return;
-    // }
-
-    // objGet() {
-    //     let key = this.stackTop as MyrString;
-    //     this.stack.pop();
-    //     let obj = this.stackTop as MyrObject;
-    //     this.stack.pop();
-    //     let retreived = obj.members.get(key.value);
-    //     this.stack.push(retreived);
-    // }
 
     private binaryOp(fn: (left: number, right: number) => number): void {
         let [right, left] = this.topTwo as [MyrNumeric, MyrNumeric];

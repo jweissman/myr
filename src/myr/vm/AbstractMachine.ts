@@ -11,20 +11,44 @@ export class MyrObject {
     public members: DB = new SimpleDB();
     get value(): any {
         let comparableMembers = omit("initialize", this.members.toJS());
+        // if (this.members.has("class") && this.members.get("class").name === 'MyrArray') {
+        //     comparableMembers = omit("arr", this.members.toJS());
+        // }
         return comparableMembers;
     }
 
     toJS(): any {
-        let printableMembers = omit("initialize",
-            omit("class", this.members.toJS()));
-        let klass = (this.members as SimpleDB).has("class") ? this.members.get("class").name : "anonymous";
-        return klass + "(" + JSON.stringify(printableMembers) + ")";
+        // console.log("TOJS", this.members.get("class").name)
+        
+        if (this.members.get("class").name === 'MyrArray') {
+            let unk: unknown = this;
+            let arr = (unk as MyrArray).members.get("arr");
+            console.log("GOT WRAPPED MYR ARR", arr)
+            return arr.map((elem: any) => elem.toJS());
+        } else {
+            let printableMembers = omit("initialize",
+                omit("class", this.members.toJS()));
+            let klass = (this.members as SimpleDB).has("class") ? this.members.get("class").name : "anonymous";
+            return klass + "(" + JSON.stringify(printableMembers) + ")";
+        }
     };
 
     equals(other: MyrObject): boolean {
         let cmp = this.value === other.value
-        console.log("EQ?", cmp, this.value, other.value)
+        // console.log("EQ?", cmp, this.value, other.value)
         return cmp
+    }
+}
+
+export class MyrClass extends MyrObject {
+    // public shared: MyrObject = new MyrObject();
+    constructor(public name: string) {
+        super();
+    }
+
+    toJS() {
+        return `MyrClass[${this.name}]`; //{ className: this.name }
+        // throw new Error("MyrClass#toJS -- Method not implemented.");
     }
 }
 
@@ -57,27 +81,44 @@ export class MyrNil extends MyrObject {
     get value() { return null; }
 }
 
+let arrayClass = new MyrClass('MyrArray')
 export class MyrArray extends MyrObject {
-    constructor(public elements: MyrObject[] = []) {
+    constructor(elements: MyrObject[] = []) {
         super();
-        // this.members.put("length", new MyrFunction()); //new MyrNumeric(4321))
+        this.members.put("class", arrayClass); //new MyrNumeric(4321))
+        this.members.put("arr", elements); //new MyrNumeric(4321))
     } 
 
     // get value() { return this.toJS() }
 
+    get elements(): MyrObject[] { return this.members.get("arr")}
+
     equals(other: MyrArray): boolean {
-        let cmp = this.elements.length === other.elements.length && this.elements.every((element,index) => this.elements[index].equals(other.elements[index]))
+        let cmp = this.elements.length === other.elements.length && this.elements.every(
+            (_element,index) => this.elements[index].equals(other.elements[index]))
         // console.log("EQ?", cmp, this.value, other.value)
         return cmp
     }
 
     toJS() {
-        return this.elements.map(elem => elem.toJS());
+        return this.elements.map(elem => (elem instanceof MyrObject) ? elem.toJS() : elem);
     }
 
+    // push = () => 
+
     jsMethods = {
+        to_a: () => new MyrArray(this.elements),
         length: () => new MyrNumeric(this.elements.length),
-        push: (x: MyrObject) => { this.elements.push(x); },
+        push: (x: MyrObject) => {
+            console.log("PUSH: " +x);
+            this.elements.push(x);
+            return new MyrNil()
+        },
+        get: (i: number) => this.elements[i],
+        put: (x: MyrObject, i: number) => {
+            this.elements[i] = x;
+            return new MyrNil()
+        }
     }
 }
 
@@ -104,17 +145,6 @@ export class MyrHash extends MyrObject {
     }
 }
 
-export class MyrClass extends MyrObject {
-    // public shared: MyrObject = new MyrObject();
-    constructor(public name: string) {
-        super();
-    }
-
-    toJS() {
-        return `MyrClass[${this.name}]`; //{ className: this.name }
-        // throw new Error("MyrClass#toJS -- Method not implemented.");
-    }
-}
 
 // const objectFactory = (klass: MyrClass) => {
 //     let object: MyrObject = new MyrObject();
@@ -122,7 +152,7 @@ export class MyrClass extends MyrObject {
 //     return object;
 // }
 
-export type Value = MyrObject
+export type Value = MyrObject | Array<MyrObject>
 
 export abstract class AbstractMachine {
     abstract push(value: Value): void;

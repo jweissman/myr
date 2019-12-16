@@ -19,7 +19,7 @@ export class Controller {
     get result() {
         let raw = this.rawResult
         if (raw !== null) {
-            return raw.toJS();
+            return (raw as MyrObject).toJS();
         } else {
             return null;
         }
@@ -80,7 +80,7 @@ export class Controller {
                 this.push(value);
                 this.machine.hashPut();
             } else {
-                recv.members.put(msg, value);
+                (recv as MyrObject).members.put(msg, value);
             }
         } else {
             throw new Error("must provide a key for send_eq?")
@@ -93,11 +93,12 @@ export class Controller {
         if (receiver instanceof MyrHash && key) {
             this.machine.push(new MyrString(key));
             this.machine.hashGet();
-        } else { // assume we're an object
+        } else if (receiver instanceof MyrObject) { // assume we're an object
             this.machine.pop();
             let message = (key);
             if (message) {
                 let hasClass = receiver.members.has("class");
+                let klass = hasClass ? receiver.members.get("class") : undefined;
                 let hasClassMethod = hasClass &&
                     receiver.members.get("class").members.has("shared") &&
                     receiver.members.get("class").members.get("shared").members.has(message);
@@ -116,16 +117,18 @@ export class Controller {
                 } else {
                     let fn = receiver.jsMethods[message];
                     if (fn) {
-                        this.callExec(fn,0)
+                        this.callExec(fn,fn.length)
                         called = true;
                     } else {
-                        console.trace("method missing", { receiver, message, hasClass, hasClassMethod  })
+                        console.trace("method missing", { klass, receiver, message, hasClass, hasClassMethod  })
                         throw new Error("Method missing on " + (receiver.toJS()) + ": " + message);
                     }
                 }
             } else {
                 throw new Error("send expects key of message to dispatch");
             }
+        } else {
+            throw new Error("send expects receiver to be object");
         }
         return { receiver, called } ;
     }
@@ -169,7 +172,7 @@ export class Controller {
     public compare(expected: number, cmp=(l: number,r: number)=>l===r) {
         this.machine.compare();
         let eq: boolean = cmp(
-            this.machine.peek().value,
+            (this.machine.peek() as MyrObject).value,
             expected
         );
         this.machine.pop();

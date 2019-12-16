@@ -18,7 +18,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
+    "test:debug:osx": "node --inspect-brk node_modules/.bin/jest --runInBand",
+    "test:debug": "node --inspect-brk ./node_modules/jest-cli/bin/jest.js --runInBand"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -36,11 +37,12 @@
     ]
   },
   "devDependencies": {
-    "assert-never": "^1.2.0",
-    "chalk": "^3.0.0",
-    "jest-dom": "^4.0.0",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",
-    "@testing-library/user-event": "^7.1.2"
+    "@testing-library/user-event": "^7.1.2",
+    "assert-never": "^1.2.0",
+    "chalk": "^3.0.0",
+    "jest-cli": "^24.9.0",
+    "jest-dom": "^4.0.0"
   }
 }

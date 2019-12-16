@@ -1,5 +1,5 @@
 import { DB } from "./DB";
-import { Value, MyrNil } from "./AbstractMachine";
+import { Value, MyrNil, MyrObject } from "./AbstractMachine";
 type Store = { [key: string]: Value; }
 export class SimpleDB extends DB {
     underlyingStores: DB[];
@@ -73,6 +73,6 @@ export class SimpleDB extends DB {
     }
 
     toJS() { return Object.fromEntries(
-        Object.entries({...this.store}).map(([key,value]) => [key, value.toJS()])
+        Object.entries({...this.store}).map(([key,value]) => [key, value instanceof MyrObject ? value.toJS(): value])
      ) }
 }
