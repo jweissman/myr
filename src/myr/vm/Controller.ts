@@ -1,4 +1,4 @@
-import { Value, MyrObject, MyrHash, MyrString, Tombstone, MyrBoolean } from "./AbstractMachine";
+import { Value, MyrObject, MyrHash, MyrString, Tombstone, MyrBoolean, MyrClass } from "./AbstractMachine";
 import Machine from "./Machine";
 import { DB } from "./DB";
 import { SimpleDB } from "./SimpleDB";
@@ -30,6 +30,16 @@ export class Controller {
             this.machine.push(value);
         } else {
             throw new Error("Push must have a value")
+        }
+    }
+    
+    public exists(key: string | undefined, db: DB) {
+        if (key !== undefined) {
+            this.machine.push(
+                new MyrBoolean(db.has(key))
+            );
+        } else {
+            throw new Error("must have a key to check exists")
         }
     }
 
@@ -77,8 +87,9 @@ export class Controller {
         }
     }
 
-    public send(key: string | undefined) { //(instruction: Instruction) {
+    public send(key: string | undefined): { called: boolean, receiver: MyrObject } { //(instruction: Instruction) {
         let receiver = this.machine.peek();
+        let called = false;
         if (receiver instanceof MyrHash && key) {
             this.machine.push(new MyrString(key));
             this.machine.hashGet();
@@ -86,30 +97,41 @@ export class Controller {
             this.machine.pop();
             let message = (key);
             if (message) {
+                let hasClass = receiver.members.has("class");
+                let hasClassMethod = hasClass &&
+                    receiver.members.get("class").members.has("shared") &&
+                    receiver.members.get("class").members.get("shared").members.has(message);
+                        // debugger;
+
                 if ((receiver.members as SimpleDB).has(message)) {
                     let member = receiver.members.get(message);
                     this.push(member);
+                } else if (hasClass && hasClassMethod) {
+                    // receiver.members.get("class").members.has("shared") &&
+                    // receiver.members.get("class").members.get("shared").members.has(message)) {
+                    let member = // receiver.members.get("class").shared
+                        receiver.members.get("class").members.get("shared").members.get(message);
+                    // let member = definition.members.get(message);
+                    this.push(member);
                 } else {
-                    // could send method missing
-                    // for now maybe check if method is defined on object? and exec
-                    // (we could compile the wrapped function at defn?)
                     let fn = receiver.jsMethods[message];
                     if (fn) {
                         this.callExec(fn,0)
-                        // fall thru for builtins?
-                        // this.ex
+                        called = true;
                     } else {
-                        throw new Error("Method missing on " + receiver.toJS() + ": " + message);
+                        console.trace("method missing", { receiver, message, hasClass, hasClassMethod  })
+                        throw new Error("Method missing on " + (receiver.toJS()) + ": " + message);
                     }
                 }
             } else {
                 throw new Error("send expects key of message to dispatch");
             }
         }
-        return receiver;
+        return { receiver, called } ;
     }
 
     public callExec(jsMethod: Function, arity: number) {
+        // console.log("CALL EXEC", jsMethod)
         // if (instruction.jsMethod) {
         let fn = jsMethod;
         let jsResult = null;
@@ -122,6 +144,8 @@ export class Controller {
         } else {
             jsResult = fn()
         }
+
+        // console.log("CALL EXEC RETURN", jsResult)
 
         if (jsResult && (jsResult instanceof MyrObject)) {
             this.push(jsResult);

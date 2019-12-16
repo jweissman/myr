@@ -46,7 +46,7 @@ export class MyrBoolean extends MyrObject {
     toJS(): boolean { return this.val; }
 }
 export class MyrFunction extends MyrObject {
-    constructor(public label: string, public closure: DB = new SimpleDB()) {
+    constructor(public label: string, public closure: DB = new SimpleDB(), public ast?: any) {
         super();
     }
     toJS(): string { return `MyrFunction(${this.label})`; }
@@ -75,7 +75,10 @@ export class MyrArray extends MyrObject {
         return this.elements.map(elem => elem.toJS());
     }
 
-    jsMethods = { length: () => this.elements.length }
+    jsMethods = {
+        length: () => new MyrNumeric(this.elements.length),
+        push: (x: MyrObject) => { this.elements.push(x); },
+    }
 }
 
 export class Tombstone extends MyrObject {
@@ -102,7 +105,11 @@ export class MyrHash extends MyrObject {
 }
 
 export class MyrClass extends MyrObject {
-    constructor(public name: string) { super(); }
+    // public shared: MyrObject = new MyrObject();
+    constructor(public name: string) {
+        super();
+    }
+
     toJS() {
         return `MyrClass[${this.name}]`; //{ className: this.name }
         // throw new Error("MyrClass#toJS -- Method not implemented.");

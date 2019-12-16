@@ -1,21 +1,17 @@
-import assertNever from 'assert-never';
-import Machine from "./Machine";
-import { Algebra } from "./Algebra";
-import { prettyInstruction, Instruction, instruct } from "./Instruction";
-import { DB } from './DB';
-import { SimpleDB } from './SimpleDB';
-import { OpCode } from './OpCode';
-import { Value, MyrNumeric, MyrFunction, MyrBoolean, MyrObject, MyrString, MyrHash, MyrNil, Tombstone } from './AbstractMachine';
 import chalk from 'chalk';
+import assertNever from 'assert-never';
+import { Value, MyrNumeric, MyrFunction, MyrObject } from './AbstractMachine';
+import { Algebra } from "./Algebra";
 import { Controller } from './Controller';
+import { DB } from './DB';
+import { prettyInstruction, Instruction, instruct } from "./Instruction";
+import Machine from "./Machine";
+import { OpCode } from './OpCode';
+import { SimpleDB } from './SimpleDB';
 
 type Frame = { retAddr: number, db: DB, self: MyrObject }
 
 let main = new MyrObject();
-
-// abstract class AbstractASTNode {
-//     abstract inspect(): string;
-// }
 
 abstract class Compiler<T> {
     abstract generateCode(ast: T): Instruction[];
@@ -153,9 +149,11 @@ class Interpreter<T> {
         if (top && top instanceof MyrFunction) {
             let { label, closure } = top;
             this.machine.pop()
+            // console.log("INVOKE FUNCTION", { label, self })
             this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db), self });
             this.jump(label);
         } else {
+            console.log("no function to call?")
             throw new Error("invoke expects stack top to have function to call...")
         }
     }
@@ -216,6 +214,7 @@ class Interpreter<T> {
             case 'cmp_lt': this.controls.compare(-1); break;
             case 'cmp_eq': this.controls.compare(0); break;
             case 'cmp_neq': this.controls.compare(0,(l,r)=>l!=r); break;
+            case 'exists': this.controls.exists(instruction.key, this.db); break;
             case 'store': this.controls.store(instruction.key, this.db); break;
             case 'load':
                 this.controls.load(instruction.key, this.db, { self: this.self });
@@ -253,8 +252,11 @@ class Interpreter<T> {
             case 'send_eq':this.controls.sendEq(instruction.key); break;
             case 'send_attr': this.controls.send(instruction.key); break;
             case 'send_call': 
-                let receiver = this.controls.send(instruction.key); 
-                this.invoke(receiver);
+                let { receiver, called } = this.controls.send(instruction.key); 
+                // if (receiver) {
+                if (!called) {
+                    this.invoke(receiver);
+                }
                 break;
             case 'construct':
                 let newObj = new MyrObject();

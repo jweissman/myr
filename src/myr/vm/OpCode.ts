@@ -1,8 +1,10 @@
-export type OpCode = 'push'
+export type OpCode =
+                   | 'noop'
+
+                   | 'push'
                    | 'pop'
                    | 'swap'
                    | 'dup'
-                   | 'noop' 
 
                    | 'and'
                    | 'or'
@@ -18,6 +20,7 @@ export type OpCode = 'push'
 
                    | 'store' 
                    | 'load'
+                   | 'exists'
 
                    | 'arr_get'
                    | 'arr_put'

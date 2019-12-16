@@ -1,4 +1,5 @@
 export abstract class DB {
+    abstract has(key: string): boolean;
     abstract get(key: string): any;
     abstract put(key: string, value: any): void;
     abstract clone(): DB;
