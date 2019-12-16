@@ -55,7 +55,7 @@ export class SimpleAlgebra extends Algebra {
             result = 1;
         } else if (x < y) {
             result = -1;
-        } else if (x == y) {
+        } else if (x === y) {
             result = 0;
         } else {
             result = -1;

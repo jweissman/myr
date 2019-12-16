@@ -42,7 +42,7 @@ export class SimpleDB extends DB {
             return val;
         } else {
             // return new MyrNil()
-            console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStores })
+            // console.trace("No variable!", { key, store: this.store, underlying: this.underlyingStores })
             throw new Error("No such variable defined: " + key)
         }
         // we can see through to outer frames, but favor our values?

@@ -14,11 +14,11 @@ describe(Machine, () => {
     it('pushes, pops, peeks', () => {
         expect(machine.peek()).toEqual(undefined)
         machine.push(new MyrNumeric(1))
-        expect(machine.peek()).toEqual(new MyrNumeric(1))
+        expect((machine.peek() as MyrNumeric).value).toEqual(1)
         machine.push(new MyrNumeric(2))
-        expect(machine.peek()).toEqual(new MyrNumeric(2))
+        expect((machine.peek() as MyrNumeric).value).toEqual(2)
         machine.pop()
-        expect(machine.peek()).toEqual(new MyrNumeric(1))
+        expect((machine.peek() as MyrNumeric).value).toEqual(1)
         machine.pop()
         expect(machine.peek()).toEqual(undefined)
     })
@@ -26,9 +26,9 @@ describe(Machine, () => {
     it('swaps', () => {
         machine.push(new MyrNumeric(1))
         machine.push(new MyrNumeric(0))
-        expect(machine.peek()).toEqual(new MyrNumeric(0))
+        expect((machine.peek() as MyrNumeric).value).toEqual(0)
         machine.swap()
-        expect(machine.peek()).toEqual(new MyrNumeric(1))
+        expect((machine.peek() as MyrNumeric).value).toEqual(1)
     })
 
     describe('arithmetic', () => {
@@ -39,48 +39,50 @@ describe(Machine, () => {
 
         it('adds', () => {
             machine.add()
-            expect(machine.peek()).toEqual(new MyrNumeric(5))
+            // expect(machine.peek()).toEqual(new MyrNumeric(5))
+            expect((machine.peek() as MyrNumeric).value).toEqual(5)
         })
 
         it('subtracts', () => {
             machine.subtract()
-            expect(machine.peek()).toEqual(new MyrNumeric(-1))
+            // expect(machine.peek()).toEqual(new MyrNumeric(-1))
+            expect((machine.peek() as MyrNumeric).value).toEqual(-1)
         })
 
         it('multiplies', () => {
             machine.multiply()
-            expect(machine.peek()).toEqual(new MyrNumeric(6))
+            expect((machine.peek() as MyrNumeric).value).toEqual(6)
         })
 
         it('divides', () => {
             machine.push(new MyrNumeric(4))
             machine.push(new MyrNumeric(2))
             machine.divide()
-            expect(machine.peek()).toEqual(new MyrNumeric(2))
+            expect((machine.peek() as MyrNumeric).value).toEqual(2)
         })
 
         it('exponentiates', () => {
             machine.exponentiate()
-            expect(machine.peek()).toEqual(new MyrNumeric(8))
+            expect((machine.peek() as MyrNumeric).value).toEqual(8)
         })
 
         it('compares', () => {
             machine.push(new MyrNumeric(2))
             machine.push(new MyrNumeric(3))
             machine.compare()
-            expect(machine.peek()).toEqual(new MyrNumeric(-1)) // 3 > 2
+            expect((machine.peek() as MyrNumeric).value).toEqual(-1) // 3 > 2
             machine.pop()
 
             machine.push(new MyrNumeric(3))
             machine.push(new MyrNumeric(2))
             machine.compare()
-            expect(machine.peek()).toEqual(new MyrNumeric(1))  // 2 < 3
+            expect((machine.peek() as MyrNumeric).value).toEqual(1)  // 2 < 3
             machine.pop()
 
             machine.push(new MyrNumeric(2))
             machine.push(new MyrNumeric(2))
             machine.compare()
-            expect(machine.peek()).toEqual(new MyrNumeric(0))  // 2 == 2
+            expect((machine.peek() as MyrNumeric).value).toEqual(0)  // 2 == 2
             machine.pop()
         })
     })
@@ -93,7 +95,7 @@ describe(Machine, () => {
         expect(machine.peek()).toEqual(undefined)
         machine.load('hello', db)
         machine.peek()
-        expect(machine.peek()).toEqual(new MyrNumeric(123))
+        expect((machine.peek() as MyrNumeric).value).toEqual(123)
     })
 
     it('array assembly', () => {
@@ -148,7 +150,7 @@ describe(Machine, () => {
         machine.push(new MyrNumeric(12345)); // value
 
         machine.hashPut(); // value
-        expect((machine.peek() as MyrHash).keyValues['hello']).toEqual(new MyrNumeric(12345));
+        expect((machine.peek() as MyrHash).keyValues['hello'].equals(new MyrNumeric(12345))).toEqual(true);
     })
 
     it('hash inspect', () => {

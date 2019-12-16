@@ -1,6 +1,6 @@
 import { instruct, Instruction } from "./Instruction";
 
-import { MyrBoolean, arrayClass } from "./AbstractMachine";
+import { MyrBoolean, arrayClass, numberClass } from "./AbstractMachine";
 
 type MyrProgram = Instruction[]
 export default class Assembler {
@@ -10,7 +10,11 @@ export default class Assembler {
     static embeds(): Instruction[] {
         return [
             instruct('push', { value: arrayClass }),
-            instruct('store', { key: 'MyrArray' }),
+            instruct('store', { key: arrayClass.name }),
+            instruct('pop'),
+
+            instruct('push', { value: numberClass }),
+            instruct('store', { key: numberClass.name }),
             instruct('pop'),
         ]
     }
