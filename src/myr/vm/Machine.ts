@@ -32,7 +32,6 @@ export default class Machine extends AbstractMachine {
     }
 
     push(value: Value): void {
-        // console.log("Machine#push", { value })
         this.stack.push(value);
     }
 
@@ -114,10 +113,6 @@ export default class Machine extends AbstractMachine {
     }
 
     or() {
-        // short circuit?
-        // let [right, left] = this.topTwo as [MyrObject,MyrObject];
-        // if left is truthy we're done? otherwise return the right value?
-        // this.
         return this.binaryOpLog(this.algebra.or);
     }
 

@@ -75,4 +75,6 @@ export class SimpleDB extends DB {
     toJS() { return Object.fromEntries(
         Object.entries({...this.store}).map(([key,value]) => [key, value instanceof MyrObject ? value.toJS(): value])
      ) }
+
+    //  toString() { return this.toJS(); }
 }

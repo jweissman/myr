@@ -1,4 +1,4 @@
-import { Value, MyrObject, MyrHash, MyrString, Tombstone, MyrBoolean, MyrClass } from "./AbstractMachine";
+import { Value, MyrObject, MyrHash, MyrString, Tombstone, MyrBoolean } from "./AbstractMachine";
 import Machine from "./Machine";
 import { DB } from "./DB";
 import { SimpleDB } from "./SimpleDB";
@@ -120,8 +120,10 @@ export class Controller {
                         this.callExec(fn,fn.length)
                         called = true;
                     } else {
-                        console.trace("method missing", { klass, receiver, message, hasClass, hasClassMethod  })
-                        throw new Error("Method missing on " + (receiver.toJS()) + ": " + message);
+                        // if (failMissing) {
+                            console.trace("method missing", { klass, receiver, message, hasClass, hasClassMethod })
+                            throw new Error("Method missing on " + (receiver.toJS()) + ": " + message);
+                        // }
                     }
                 }
             } else {

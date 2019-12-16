@@ -6,24 +6,32 @@ function omit(key: string, obj: object): object {
     return rest;
 }
 
-export class MyrObject {
-    public jsMethods: {[key: string]: Function} = {};
+class BasicObject {
+    public members: DB = new SimpleDB();
+}
+
+export class MyrObject extends BasicObject {
+    public jsMethods: {[key: string]: Function} = {
+        // meld: (other: MyrObject) => {
+        //     this.members.putAll(other.members)
+        // }
+    };
+
+    // constructor() {
+    //     super();
+    //     // this.members.put(SHARED_SLOT, new BasicObject())
+    // }
+
     public members: DB = new SimpleDB();
     get value(): any {
         let comparableMembers = omit("initialize", this.members.toJS());
-        // if (this.members.has("class") && this.members.get("class").name === 'MyrArray') {
-        //     comparableMembers = omit("arr", this.members.toJS());
-        // }
         return comparableMembers;
     }
 
     toJS(): any {
-        // console.log("TOJS", this.members.get("class").name)
-        
-        if (this.members.get("class").name === 'MyrArray') {
+        if (this.members.has("class") && this.members.get("class").name === arrayClass.name) {
             let unk: unknown = this;
             let arr = (unk as MyrArray).members.get("arr");
-            console.log("GOT WRAPPED MYR ARR", arr)
             return arr.map((elem: any) => elem.toJS());
         } else {
             let printableMembers = omit("initialize",
@@ -40,10 +48,13 @@ export class MyrObject {
     }
 }
 
+export const SHARED_SLOT = 'shared'
 export class MyrClass extends MyrObject {
     // public shared: MyrObject = new MyrObject();
     constructor(public name: string) {
         super();
+
+        this.members.put(SHARED_SLOT, new BasicObject())
     }
 
     toJS() {
@@ -81,12 +92,25 @@ export class MyrNil extends MyrObject {
     get value() { return null; }
 }
 
-let arrayClass = new MyrClass('MyrArray')
+const ARRAY_CLASS_NAME = 'MyrArray';
+
+const arrayClass = new MyrClass(ARRAY_CLASS_NAME)
+arrayClass.name = ARRAY_CLASS_NAME;
+export { arrayClass };
+
+const classClass = new MyrClass('MyrClass')
+classClass.members.put("class", classClass);
+export { classClass };
+
+const myrClasses: { [key: string]: MyrClass }  = { MyrArray: arrayClass, MyrClass: classClass }
+export { myrClasses };
+
 export class MyrArray extends MyrObject {
     constructor(elements: MyrObject[] = []) {
         super();
         this.members.put("class", arrayClass); //new MyrNumeric(4321))
         this.members.put("arr", elements); //new MyrNumeric(4321))
+        console.log("BUILD NEW MYR ARRAY", this)
     } 
 
     // get value() { return this.toJS() }
@@ -107,18 +131,18 @@ export class MyrArray extends MyrObject {
     // push = () => 
 
     jsMethods = {
-        to_a: () => new MyrArray(this.elements),
+        // to_a: () => new MyrArray(this.elements),
         length: () => new MyrNumeric(this.elements.length),
-        push: (x: MyrObject) => {
-            console.log("PUSH: " +x);
-            this.elements.push(x);
-            return new MyrNil()
-        },
-        get: (i: number) => this.elements[i],
-        put: (x: MyrObject, i: number) => {
-            this.elements[i] = x;
-            return new MyrNil()
-        }
+        // push: (x: MyrObject) => {
+        //     console.log("PUSH: " +x);
+        //     this.elements.push(x);
+        //     return new MyrNil()
+        // },
+        // get: (i: number) => this.elements[i],
+        // put: (x: MyrObject, i: number) => {
+        //     this.elements[i] = x;
+        //     return new MyrNil()
+        // }
     }
 }
 
@@ -144,6 +168,9 @@ export class MyrHash extends MyrObject {
         return this.keyValues[keyToRetrieve.value] || new MyrNil();
     }
 }
+
+const myrTypes: { [key: string]: typeof MyrObject } = { MyrArray, MyrHash }
+export { myrTypes }
 
 
 // const objectFactory = (klass: MyrClass) => {
@@ -177,14 +204,4 @@ export abstract class AbstractMachine {
 
     abstract hashPut(): void;
     abstract hashGet(): void;
-
-    // enter/exit scopes (object/module...)
-    // abstract objEnter(): void;
-    // abstract selfSet(): void;
-    // abstract selfGet(): void;
-    // abstract objExit(): void;
-    // these may be more for the interpreter layer??
-    // which governs the scoped db currently
-    // abstract pushSelf(): void;
-    // abstract popSelf(): void;
 }

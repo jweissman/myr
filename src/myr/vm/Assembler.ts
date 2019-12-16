@@ -1,9 +1,20 @@
 import { instruct, Instruction } from "./Instruction";
 
-import { MyrBoolean } from "./AbstractMachine";
+import { MyrBoolean, arrayClass } from "./AbstractMachine";
 
 type MyrProgram = Instruction[]
 export default class Assembler {
+
+    static prelude(): Instruction[] { return [...Assembler.embeds()]}
+
+    static embeds(): Instruction[] {
+        return [
+            instruct('push', { value: arrayClass }),
+            instruct('store', { key: 'MyrArray' }),
+            instruct('pop'),
+        ]
+    }
+
     static conds: number = 0;
 
     static if(test: MyrProgram, left: MyrProgram, right: MyrProgram, label: string = `if-${Assembler.conds++}`) {

@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import assertNever from 'assert-never';
-import { Value, MyrNumeric, MyrFunction, MyrObject } from './AbstractMachine';
+import { Value, MyrNumeric, MyrFunction, MyrObject, myrTypes, myrClasses } from './AbstractMachine';
 import { Algebra } from "./Algebra";
 import { Controller } from './Controller';
 import { DB } from './DB';
@@ -8,6 +8,7 @@ import { prettyInstruction, Instruction, instruct } from "./Instruction";
 import Machine from "./Machine";
 import { OpCode } from './OpCode';
 import { SimpleDB } from './SimpleDB';
+import Assembler from './Assembler';
 
 type Frame = { retAddr: number, db: DB, self: MyrObject }
 
@@ -30,6 +31,8 @@ class Interpreter<T> {
     constructor(algebra: Algebra, private compiler: Compiler<T>) {
         this.machine = new Machine(algebra);
         this.controls = new Controller(this.machine);
+
+        this.install(Assembler.prelude())
     }
 
     private get topFrame() { return this.frames[this.frames.length-1]; }
@@ -260,12 +263,13 @@ class Interpreter<T> {
                 break;
             case 'construct':
                 if (instruction.key) {
-                    this.controls.load(instruction.key, this.db, {})
-                    // this.controls.sendCall("new")
-                    let { receiver, called } = this.controls.send("new");
-                    // if (receiver) {
-                    if (!called) {
-                        this.invoke(receiver);
+                    if (myrTypes[instruction.key]) {
+                        let Klass = myrTypes[instruction.key];
+                        let instance = new Klass()
+                        instance.members.put("class", myrClasses[instruction.key])
+                        this.controls.push(instance)
+                    } else {
+                        this.controls.push(new MyrObject())
                     }
                 } else {
                     let newObj = new MyrObject();
