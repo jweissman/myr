@@ -58,7 +58,7 @@ export class MyrClass extends MyrObject {
     }
 
     toJS() {
-        return `MyrClass[${this.name}]`; //{ className: this.name }
+        return this.name; //`MyrClass[${this.name}]`; //{ className: this.name }
         // throw new Error("MyrClass#toJS -- Method not implemented.");
     }
 }
@@ -92,35 +92,33 @@ export class MyrNil extends MyrObject {
     get value() { return null; }
 }
 
-const ARRAY_CLASS_NAME = 'MyrArray';
+const ARRAY_CLASS_NAME = 'List';
 
 const arrayClass = new MyrClass(ARRAY_CLASS_NAME)
 arrayClass.name = ARRAY_CLASS_NAME;
+arrayClass.members.put("name", ARRAY_CLASS_NAME);
 export { arrayClass };
 
+// const CLASS_CLASS_NAME = 'Class';
 const classClass = new MyrClass('MyrClass')
 classClass.members.put("class", classClass);
 export { classClass };
 
-const myrClasses: { [key: string]: MyrClass }  = { MyrArray: arrayClass, MyrClass: classClass }
+const myrClasses: { [key: string]: MyrClass }  = { [ARRAY_CLASS_NAME]: arrayClass, MyrClass: classClass }
 export { myrClasses };
 
 export class MyrArray extends MyrObject {
     constructor(elements: MyrObject[] = []) {
         super();
-        this.members.put("class", arrayClass); //new MyrNumeric(4321))
-        this.members.put("arr", elements); //new MyrNumeric(4321))
-        console.log("BUILD NEW MYR ARRAY", this)
+        this.members.put("class", arrayClass);
+        this.members.put("arr", elements);
     } 
-
-    // get value() { return this.toJS() }
 
     get elements(): MyrObject[] { return this.members.get("arr")}
 
     equals(other: MyrArray): boolean {
         let cmp = this.elements.length === other.elements.length && this.elements.every(
             (_element,index) => this.elements[index].equals(other.elements[index]))
-        // console.log("EQ?", cmp, this.value, other.value)
         return cmp
     }
 
@@ -128,21 +126,8 @@ export class MyrArray extends MyrObject {
         return this.elements.map(elem => (elem instanceof MyrObject) ? elem.toJS() : elem);
     }
 
-    // push = () => 
-
     jsMethods = {
-        // to_a: () => new MyrArray(this.elements),
         length: () => new MyrNumeric(this.elements.length),
-        // push: (x: MyrObject) => {
-        //     console.log("PUSH: " +x);
-        //     this.elements.push(x);
-        //     return new MyrNil()
-        // },
-        // get: (i: number) => this.elements[i],
-        // put: (x: MyrObject, i: number) => {
-        //     this.elements[i] = x;
-        //     return new MyrNil()
-        // }
     }
 }
 
@@ -169,7 +154,7 @@ export class MyrHash extends MyrObject {
     }
 }
 
-const myrTypes: { [key: string]: typeof MyrObject } = { MyrArray, MyrHash }
+const myrTypes: { [key: string]: typeof MyrObject } = { [ARRAY_CLASS_NAME]: MyrArray, MyrHash }
 export { myrTypes }
 
 
