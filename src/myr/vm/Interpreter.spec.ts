@@ -1,10 +1,8 @@
 import Interpreter, { Compiler } from "./Interpreter"
 import { SimpleAlgebra } from "./SimpleAlgebra";
 import { instruct, Instruction } from "./Instruction";
-import assertNever from "assert-never";
-import { MyrNumeric, MyrBoolean, MyrObject, MyrFunction, MyrNil } from "./AbstractMachine";
+import { MyrNumeric, MyrBoolean, MyrNil } from "./Types";
 
-// support compile spec
 abstract class AbstractASTNode { abstract get gen(): Instruction[] }
 class Defun extends AbstractASTNode {
     constructor(public params: string[], public body: AbstractASTNode) {

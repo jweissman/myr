@@ -2,8 +2,7 @@ import Machine from "./Machine";
 import { Algebra } from "./Algebra";
 import { SimpleAlgebra } from "./SimpleAlgebra";
 import { SimpleDB } from "./SimpleDB";
-import { DB } from "./DB";
-import { MyrObject, MyrNumeric, MyrArray, MyrString, MyrHash } from "./AbstractMachine";
+import { MyrNumeric, MyrArray, MyrString, MyrObject, MyrHash } from "./Types";
 
 describe(Machine, () => {
     let machine: Machine;
@@ -128,17 +127,17 @@ describe(Machine, () => {
         machine.push(array)
         machine.push(new MyrNumeric(0))
         machine.arrayGet();
-        expect(machine.peek()).toEqual(new MyrString("hello"))
+        expect((machine.peek() as MyrString).value).toEqual("hello")
 
         machine.push(array);
         machine.push(new MyrNumeric(1))
         machine.arrayGet();
-        expect(machine.peek()).toEqual(new MyrString("there"))
+        expect((machine.peek() as MyrString).value).toEqual("there")
 
         machine.push(array);
         machine.push(new MyrNumeric(2))
         machine.arrayGet();
-        expect(machine.peek()).toEqual(new MyrString("world"))
+        expect((machine.peek() as MyrString).value).toEqual("world")
     })
 
     it('hash assemble', () => {
@@ -165,8 +164,7 @@ describe(Machine, () => {
         machine.push(hash);
         machine.push(new MyrString("name"));
         machine.hashGet();
-        // debugger;
-        expect(machine.peek()).toEqual(new MyrString("John Smith"));
+        expect((machine.peek() as MyrString).value).toEqual("John Smith")
 
         machine.push(hash);
         machine.push(new MyrString("scores"));
@@ -177,19 +175,4 @@ describe(Machine, () => {
             new MyrNumeric(95),
         ]))).toBe(true);
     })
-
-    // it('object mgmt', () => {
-    //     let db = new SimpleDB();
-    //     let obj = new MyrObject('test-obj');
-    //     machine.push(obj);
-    //     machine.store('test', db);
-    //     machine.load('test', db);
-    //     machine.push(new MyrString("age"))
-    //     machine.push(new MyrNumeric(33))
-    //     machine.objSet();
-    //     machine.load('test', db);
-    //     machine.push(new MyrString("age"))
-    //     machine.objGet();
-    //     expect(machine.peek()).toEqual(new MyrNumeric(33));
-    // })
 })

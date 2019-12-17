@@ -2,8 +2,8 @@ import Interpreter from './src/myr/vm/Interpreter';
 import { SimpleAlgebra } from './src/myr/vm/SimpleAlgebra';
 import { instruct, prettyProgram, Instruction as Inst } from './src/myr/vm/Instruction';
 import { OpCode as Op } from './src/myr/vm/OpCode';
-import { MyrObject, MyrNumeric, MyrBoolean, MyrFunction, MyrString, MyrNil, MyrArray, MyrHash, MyrClass, classClass, arrayClass, numberClass, stringClass } from './src/myr/vm/AbstractMachine';
 import Assembler from './src/myr/vm/Assembler';
+import { MyrObject, MyrNil, MyrNumeric, MyrBoolean, MyrFunction, MyrString, MyrArray, MyrHash, MyrClass, arrayClass, classClass, numberClass, stringClass, boolClass } from './src/myr/vm/Types';
 
 export type Instruction = Inst;
 export type OpCode = Op;
@@ -29,4 +29,5 @@ export {
     classClass,
     numberClass,
     stringClass,
+    boolClass,
 };

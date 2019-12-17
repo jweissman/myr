@@ -1,7 +1,8 @@
-import { Value, MyrObject, MyrHash, MyrString, Tombstone, MyrBoolean } from "./AbstractMachine";
+import { Value,} from "./AbstractMachine";
 import Machine from "./Machine";
 import { DB } from "./DB";
 import { SimpleDB } from "./SimpleDB";
+import { MyrObject, MyrBoolean, MyrHash, MyrString, Tombstone } from "./Types";
 
 export class Controller {
     constructor(private machine: Machine) {}

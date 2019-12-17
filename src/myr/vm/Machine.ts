@@ -1,6 +1,7 @@
-import { AbstractMachine, Value, MyrNumeric, MyrBoolean, MyrArray, MyrObject, MyrString, MyrHash, MyrNil } from "./AbstractMachine";
+import { AbstractMachine, Value, } from "./AbstractMachine";
 import { Algebra } from "./Algebra";
 import { DB } from "./DB";
+import { MyrNumeric, MyrBoolean, MyrArray, MyrNil, MyrObject, MyrString, MyrHash } from "./Types";
 
 export default class Machine extends AbstractMachine {
     stack: Array<Value> = [];

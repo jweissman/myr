@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import assertNever from 'assert-never';
-import { Value, MyrNumeric, MyrFunction, MyrObject, myrTypes, myrClasses } from './AbstractMachine';
+import { Value } from './AbstractMachine';
 import { Algebra } from "./Algebra";
 import { Controller } from './Controller';
 import { DB } from './DB';
@@ -9,6 +9,7 @@ import Machine from "./Machine";
 import { OpCode } from './OpCode';
 import { SimpleDB } from './SimpleDB';
 import Assembler from './Assembler';
+import { MyrObject, MyrNumeric, MyrFunction, myrTypes, myrClasses } from './Types';
 
 type Frame = { retAddr: number, db: DB, self: MyrObject }
 
@@ -67,15 +68,12 @@ class Interpreter<T> {
             steps += 1;
             let instruction = this.currentInstruction;
             if (this.trace) {
-                console.log(
-                    `@${this.ip}: ` +
-                    prettyInstruction(instruction)
-                    );
+                console.log( `@${this.ip}: ` + prettyInstruction(instruction));
             }
 
-            if (this.trace && this.machine.stack.length) {
-                this.dumpStack('stack before')
-            }
+            // if (this.trace && this.machine.stack.length) {
+            //     this.dumpStack('stack before')
+            // }
             try {
                 this.execute(instruction);
             } catch(e) {
@@ -86,7 +84,7 @@ class Interpreter<T> {
                 throw(e);
             }
             if (this.trace && this.machine.stack.length) {
-                this.dumpStack('stack after')
+                // this.dumpStack(chalk.green('stack after'))
             }
 
             // this.store(this.result)
@@ -289,7 +287,7 @@ class Interpreter<T> {
     }
 
     private dumpStack(message="Stack") {
-        console.log(message + ": " + this.machine.stack.map(val => (val instanceof MyrObject ? val.toJS() : val)));
+        console.log(message + ": " + this.machine.stack.map(val => (val instanceof MyrObject ? val.toJS() : JSON.stringify(val))));
     }
 
     private indexForLabel(label: string): number | null {
