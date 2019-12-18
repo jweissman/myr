@@ -12,11 +12,17 @@ class BasicObject {
 }
 
 export class MyrObject extends BasicObject {
+    inspect() {
+        return `${this.className}(${this.value})`
+    }
+
     public jsMethods: {[key: string]: Function} = {
         "==": (other: MyrObject) => new MyrBoolean(this.value === other.value),
     };
     public members: DB = new SimpleDB();
     static count = 0;
+
+    get className(): string { return this.members.has("class") ? this.members.get("class").name : '?'}
     
     get value(): any {
         let comparableMembers = omit("initialize", this.members.toJS());
@@ -50,6 +56,8 @@ export class MyrClass extends MyrObject {
         // return `Class(${this.name})`;
     }
 
+    inspect() { return "Class(" + (this.name || 'anonymous') + ")"; }
+
     public jsMethods: { [key: string]: Function } = {
         "==": (other: MyrObject) => new MyrBoolean(other instanceof MyrClass && this.name === other.name),
     };
@@ -65,6 +73,7 @@ export class MyrFunction extends MyrObject {
         super();
     }
     toJS(): string { return `MyrFunction(${this.label})`; }
+    inspect() { return this.toJS(); }
 }
 
 // maybe a virtual fn if we can get away with it?!
@@ -74,11 +83,13 @@ export class WrappedFunction extends MyrFunction {
     }
 
     toJS(): string { return `MyrFunction(WRAPPED-${this.label})`; }
+    inspect() { return this.toJS(); }
 }
 
 export class MyrNil extends MyrObject {
     toJS(): string { return "nil"; }
     get value() { return null; }
+    inspect() { return this.toJS(); }
     jsMethods = {
         "==": (other: MyrObject) => new MyrBoolean(other instanceof MyrNil),
         "!=": (other: MyrObject) => new MyrBoolean(!(other instanceof MyrNil)),
@@ -165,7 +176,7 @@ export class MyrString extends MyrObject {
         return this.val;
     }
     jsMethods = {
-        "+": (other: MyrString) => { 
+        "_join": (other: MyrString) => { 
             let joined = String(other.val) + String(this.val);
             return new MyrString(joined);
         },
@@ -176,7 +187,9 @@ export class MyrString extends MyrObject {
             return new MyrString(copies.join(""))
         },
         "[]": (index: MyrNumeric) => { return new MyrString(this.val.charAt(index.value)); },
-        "to_a": () => {
+        "_to_a": () => {
+            console.log("String.to_a", { val: this.val })
+            // if (typeof this.value !== 'string') { return this.value }
             return new MyrArray(
                 this.val.split("").map(ch => new MyrString(ch))
             )
@@ -276,6 +289,7 @@ export class MyrArray extends MyrObject {
             (elem instanceof MyrObject) ? elem.toJS() : elem
         )
     }
+    inspect() { return 'List[' + (this.elements.map(elem => elem.inspect()).join(', ')) + ']'; }
 
     jsMethods = {
         length: () => new MyrNumeric(this.elements.length),
@@ -288,6 +302,10 @@ export class MyrArray extends MyrObject {
             }
             return new MyrNil()
         },
+        //_join: () => {
+        //    return new MyrString(
+        //    )
+        //},
         "[]": (index: MyrNumeric) => { return this.elements[index.value] || new MyrNil(); },
         "[]=": (index: MyrNumeric, value: MyrObject) => {
             this.elements[index.value] = value;
@@ -303,6 +321,11 @@ export class Tombstone extends MyrObject {
         super();
     }
     toJS() { return `_${this.label}_`; }
+    get className() { return "pebble"; }
+
+    inspect() {
+        return this.toJS(); //`${this.className}(${this.value})`
+    }
 }
 
 //  MyrTuple // :D
@@ -317,6 +340,19 @@ export class MyrHash extends MyrObject {
         Object.keys(fields).forEach((key) => fields[key] = fields[key].toJS());
         return (fields);
     }
+
+    inspect() {
+        //  let fields: {[key: string]: string} = { };
+        let fields = Object.keys(this.keyValues).flatMap((key: string) => {
+            let inspected = this.keyValues[key].inspect();
+            return `${key}: ${inspected}`
+            // fields[key] = inspected;
+        }).join(', ');
+        // return (inspectedFields);
+ 
+        return 'Hash{' + fields + '}';
+    }
+
     set(key: MyrString, valueToAssign: MyrObject) {
         // console.log("HASH SET", { key: key.value, value:valueToAssign.toJS()})
          
@@ -328,7 +364,7 @@ export class MyrHash extends MyrObject {
     jsMethods = {
         "_keys": () => { return new MyrArray(Object.keys(this.keyValues).map(key => new MyrString(key))); },
         "_get": (k: MyrString) => this.keyValues[k.value],
-        // "_put": (k: MyrString, v: MyrObject) => this.keyValues[k.value] = v,
+        "_put": (k: MyrString, v: MyrObject) => this.keyValues[k.value] = v,
         "_set": (arr: MyrArray | MyrHash) => {
             // console.log("HASH _SET")
             if (arr instanceof MyrHash) {

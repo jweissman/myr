@@ -26,7 +26,9 @@ export type OpCode =
                    | 'arr_put'
                    | 'hash_get'
                    | 'hash_put'
-                //    | 'push_self'
+
+                  //  | 'enter' // assign stack top to self...?
+                  //  | 'exit' // assign stack top to self...?
                 //    | 'pop_self'
                   //  | 'send' 
                    | 'send_attr' // .a
@@ -48,7 +50,8 @@ export type OpCode =
                    | 'jump_if_zero'
 
                    | 'call'            // CALL   -- invoke function at [target]
-                   | 'invoke'          // INVOKE -- invoke function with label identified by (top)
+                   | 'invoke'          // INVOKE -- invoke function given by stackTop [or with label identified by (top) -- deprecated?]
+                   | 'obj_invoke'          // OBJ_INVOKE -- invoke function at second on object at top
                    | 'exec'            // EXEC   -- execute a JS function given as such by [jsMethod],
                                        //           giving stack as positional args up to [arity]
                    | 'compile'         // COMPILE -- take ast and generate code for it

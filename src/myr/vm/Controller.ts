@@ -59,8 +59,9 @@ export class Controller<T> {
 
     public load(key: string | undefined, db: DB, fallbacks: { [k: string]: MyrObject}) {
         if (key) {
+            // console.log("TRY LOAD", { key, db })
           if (db.has(key)) {
-              // console.log("LOAD", { key, db: JSON.stringify(this.db) })
+            //   console.log("LOAD", { key, db })
               this.machine.load(key, db);
           } else if (Object.keys(fallbacks).indexOf(key) !== -1) {
               this.push(fallbacks[key])
@@ -87,6 +88,7 @@ export class Controller<T> {
             (recv as MyrObject).members.put(msg, value);
         //     }
         } else {
+            this.meta.dumpStack("send-eq fail")
             throw new Error("must provide a key for send_eq?")
         }
     }

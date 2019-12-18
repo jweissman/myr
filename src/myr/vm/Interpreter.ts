@@ -10,7 +10,7 @@ import Machine from "./Machine";
 import { OpCode } from './OpCode';
 import { SimpleDB } from './SimpleDB';
 import Assembler from './Assembler';
-import { MyrObject, MyrNumeric, MyrFunction, myrTypes, myrClasses, WrappedFunction, MyrClass } from './Types';
+import { MyrObject, MyrNumeric, MyrFunction, myrTypes, myrClasses, WrappedFunction, MyrClass, MyrNil } from './Types';
 
 type Frame = { retAddr: number, db: DB,
     self: MyrObject }
@@ -74,6 +74,7 @@ class Interpreter<T> {
         // let stackLengths = []
         let seenInstructions: { [key in OpCode]?: number } = {}
         let lastLabel: string = '---'
+        let lastSelf: string = '---'
         while (this.ip < this.currentProgram.length) {
             steps += 1;
             let instruction = this.currentInstruction;
@@ -100,13 +101,15 @@ class Interpreter<T> {
                     throw (e);
                 }
                 if (this.trace && this.machine.stack.length) {
-                    this.dumpStack(chalk.green('stack after'))
+                    this.dumpStack(chalk.green('stack after'), lastSelf)
                 }
 
                 // this.store(this.result)
                 if (this.machine.stack.length) {
                     this.machine.store("_", this.db);
                 }
+
+                lastSelf = this.self.inspect();
 
             }
             this.ip++;
@@ -213,6 +216,7 @@ class Interpreter<T> {
         }
     }
 
+    oldSelf: MyrObject = new MyrNil()
     lambdaCount: number = 0;
     private execute(instruction: Instruction) {
         let op: OpCode = instruction.op;
@@ -258,6 +262,15 @@ class Interpreter<T> {
                 this.frames.push(newFrame)
                 this.jump(instruction.target);
                 break;
+            // case 'enter':
+            //     this.oldSelf = this.self;
+            //     this.db.put("self", this.machine.stackTop)
+            //     this.machine.pop()
+            //     break;
+            // case 'exit':
+            //     this.db.put("self", this.oldSelf)
+            //     // this.machine.pop()
+            //     break;
             case 'invoke': this.invoke(); break;
             case 'exec':
                 if (instruction.jsMethod) {
@@ -276,7 +289,15 @@ class Interpreter<T> {
             case 'arr_put': this.machine.arrayPut(); break;
             case 'hash_get': this.machine.hashGet(); break;
             case 'hash_put': this.machine.hashPut(); break;
-            case 'send_eq':this.controls.sendEq(instruction.key); break;
+
+            case 'obj_invoke':
+                // assume top is obj
+                let objReceiver = this.machine.stackTop as MyrObject;
+                this.machine.pop()
+                this.invoke(objReceiver);
+                break;
+            
+            case 'send_eq': this.controls.sendEq(instruction.key); break;
             case 'send_attr': this.controls.send(instruction.key, this.db); break;
             case 'send_call': 
                 // console.log(`send call ${instruction.key}`)
@@ -321,12 +342,26 @@ class Interpreter<T> {
         }
     }
 
-    private dumpStack(message="Stack") {
-        let theStack = this.machine.stack.map(val => (val instanceof MyrObject ? val.toJS() : JSON.stringify(val)))
+    // private dumpObjectStore(object: MyrObject): void {
+    //     if (object instanceof MyrObject) {
+    //         return val.members
+    //     }
+    // }
+
+    private dumpObject(object: MyrObject) {
+        // return `Myr(${object.className}: ${object.inspect()})`
+    }
+
+    public dumpStack(message="Stack", lastSelf: string = this.self.inspect()) {
+        let theStack = this.machine.stack.map(val => 
+            (val instanceof MyrObject ? (val).inspect() : `JS(${((val) || '?')})`)
+            )
         console.log(
             message + ": " + theStack
         );
-        console.log(chalk.gray("self: " + this.self.toJS()));
+        if (this.self.inspect() !== lastSelf) {
+            console.log(chalk.gray("self is now: " + this.self.inspect()));
+        }
     }
 
     private indexForLabel(label: string): number | null {
