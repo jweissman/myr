@@ -1,23 +1,9 @@
 import { instruct, Instruction } from "./Instruction";
-import { arrayClass, numberClass, MyrBoolean } from "./Types";
-
+import { MyrBoolean } from "./Types";
 
 type MyrProgram = Instruction[]
 export default class Assembler {
-
-    static prelude(): Instruction[] { return [...Assembler.embeds()]}
-
-    static embeds(): Instruction[] {
-        return [
-            // instruct('push', { value: arrayClass }),
-            // instruct('store', { key: arrayClass.name }),
-            // instruct('pop'),
-
-            // instruct('push', { value: numberClass }),
-            // instruct('store', { key: numberClass.name }),
-            // instruct('pop'),
-        ]
-    }
+    static prelude(): Instruction[] { return []};
 
     static conds: number = 0;
 

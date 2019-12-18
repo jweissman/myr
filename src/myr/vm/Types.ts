@@ -18,26 +18,16 @@ export class MyrObject extends BasicObject {
     public members: DB = new SimpleDB();
     static count = 0;
     
-
     get value(): any {
         let comparableMembers = omit("initialize", this.members.toJS());
         return comparableMembers;
     }
+
     toJS(): any {
-        // if (this.members.has("class") && this.members.get("class").name === arrayClass.name) {
-        //     let unk: unknown = this;
-        //     let arr = (unk as MyrArray).members.get("arr");
-        //     return arr.map((elem: any) => elem.toJS());
-        // } else if (this.members.has("class") && this.members.get("class").name === numberClass.name) {
-        //     let unk: unknown = this;
-        //     let val = (unk as MyrNumeric).value;
-        //     return val;
-        // } else {
-            let printableMembers = omit("initialize",
-                omit("class", this.members.toJS()));
-            let klass = (this.members as SimpleDB).has("class") ? this.members.get("class").name : "anonymous";
-            return klass + "(" + JSON.stringify(printableMembers) + ")";
-        // }
+        let printableMembers = omit("initialize",
+            omit("class", this.members.toJS()));
+        let klass = (this.members as SimpleDB).has("class") ? this.members.get("class").name : "anonymous";
+        return klass + "(" + JSON.stringify(printableMembers) + ")";
     };
 
     equals(other: MyrObject): boolean {
@@ -57,6 +47,7 @@ export class MyrClass extends MyrObject {
 
     toJS() {
         return this.name;
+        // return `Class(${this.name})`;
     }
 
     public jsMethods: { [key: string]: Function } = {
@@ -65,10 +56,24 @@ export class MyrClass extends MyrObject {
 }
 
 export class MyrFunction extends MyrObject {
-    constructor(public label: string, public closure: DB = new SimpleDB(), public ast?: any) {
+    constructor(
+        public label: string,
+        public closure: DB = new SimpleDB(),
+        public ast?: any,
+        // public self?: any
+    ) {
         super();
     }
     toJS(): string { return `MyrFunction(${this.label})`; }
+}
+
+// maybe a virtual fn if we can get away with it?!
+export class WrappedFunction extends MyrFunction {
+    constructor(public label: string, public impl: Function, public closure: DB) {
+        super(label, closure);
+    }
+
+    toJS(): string { return `MyrFunction(WRAPPED-${this.label})`; }
 }
 
 export class MyrNil extends MyrObject {
@@ -104,11 +109,16 @@ boolClass.name = BOOLEAN_CLASS_NAME;
 boolClass.members.put("name", BOOLEAN_CLASS_NAME)
 export { boolClass };
 
+const HASH_CLASS_NAME = 'Hash';
+const hashClass = new MyrClass(HASH_CLASS_NAME);
+hashClass.name = HASH_CLASS_NAME;
+hashClass.members.put("name", HASH_CLASS_NAME);
+export { hashClass };
+
 // const CLASS_CLASS_NAME = 'Class';
 const classClass = new MyrClass('MyrClass')
 classClass.members.put("class", classClass);
 export { classClass };
-
 
 const MIRROR_CLASS_NAME = 'Mirror';
 const mirrorClass = new MyrClass(MIRROR_CLASS_NAME);
@@ -120,11 +130,11 @@ const myrClasses: { [key: string]: MyrClass }  = {
     [NUMBER_CLASS_NAME]: numberClass,
     [STRING_CLASS_NAME]: stringClass,
     [BOOLEAN_CLASS_NAME]: boolClass,
-    MyrClass: classClass,
     [MIRROR_CLASS_NAME]: mirrorClass,
+    [HASH_CLASS_NAME]: hashClass,
+    MyrClass: classClass,
 }
 export { myrClasses };
-
 
 export class MyrBoolean extends MyrObject {
     constructor(public val: boolean) {
@@ -165,14 +175,17 @@ export class MyrString extends MyrObject {
             while (i++<other.val) { copies.push(this.val); }
             return new MyrString(copies.join(""))
         },
+        "[]": (index: MyrNumeric) => { return new MyrString(this.val.charAt(index.value)); },
         "to_a": () => {
             return new MyrArray(
                 this.val.split("").map(ch => new MyrString(ch))
             )
+            //)
         },
-        "[]": (index: MyrNumeric) => { return new MyrString(this.val.charAt(index.value)); },
+
         //"length": () => new MyrNumeric(this.val.length),
         "_set": (val: MyrString | string) => {
+            // console.log("ARR SET", { val })
             this.val = val instanceof MyrString ? val.val : val; return new MyrNil();
         },
         // todo truthiness !
@@ -186,7 +199,7 @@ export class MyrMirror extends MyrObject {
         this.members.put("class", mirrorClass);
     } 
 
-    toJS(): string { return `MyrMirror`; }
+    // toJS(): string { return `MyrMirror`; }
     jsMethods = {
         conjure: (className: MyrString) => {
             return MyrClass.registry[className.value];
@@ -222,8 +235,9 @@ export class MyrNumeric extends MyrObject {
         "/": (other: MyrNumeric) => { return new MyrNumeric(other.val / this.val); },
         "^": (other: MyrNumeric) => { return new MyrNumeric(Math.pow(other.val, this.val)); },
         "_set": (val: MyrNumeric | number) => {
-            this.val = val instanceof MyrNumeric
-              ? val.val : val; return new MyrNil()
+            // console.log("Number._set", { val })
+            this.val = val instanceof MyrNumeric ? val.val : val;
+              return new MyrNil()
         },
         "to_s": () => { return new MyrString(String(this.val))},
 
@@ -258,47 +272,93 @@ export class MyrArray extends MyrObject {
     }
 
     toJS() {
-        return this.elements.map(elem => (elem instanceof MyrObject) ? elem.toJS() : elem);
+        return this.elements.map(elem =>
+            (elem instanceof MyrObject) ? elem.toJS() : elem
+        )
     }
 
     jsMethods = {
         length: () => new MyrNumeric(this.elements.length),
+        _set: (arr: MyrArray | Array<MyrObject>) => {
+            if (arr instanceof MyrArray) {
+                // can we get away from storing this on a member??
+                this.members.put("arr", arr.elements);
+            } else {
+                this.members.put("arr", arr);
+            }
+            return new MyrNil()
+        },
         "[]": (index: MyrNumeric) => { return this.elements[index.value] || new MyrNil(); },
+        "[]=": (index: MyrNumeric, value: MyrObject) => {
+            this.elements[index.value] = value;
+            return new MyrNil();
+        },
         "==": (other: MyrArray) => { return new MyrBoolean(this.equals(other)); },
         "!=": (other: MyrArray) => { return new MyrBoolean(!this.equals(other)); },
     }
 }
 
 export class Tombstone extends MyrObject {
-    toJS() { return "tombstone"; }
+    constructor(public label: string) {
+        super();
+    }
+    toJS() { return `_${this.label}_`; }
 }
 
 //  MyrTuple // :D
 
 export class MyrHash extends MyrObject {
-    constructor(public keyValues: {[key: string]: MyrObject} = {}) { super();}
+    constructor(public keyValues: {[key: string]: MyrObject} = {}) {
+        super();
+        this.members.put("class", hashClass);
+    }
     toJS() {
         let fields = { ...this.keyValues };
         Object.keys(fields).forEach((key) => fields[key] = fields[key].toJS());
-        return fields;
+        return (fields);
     }
     set(key: MyrString, valueToAssign: MyrObject) {
+        // console.log("HASH SET", { key: key.value, value:valueToAssign.toJS()})
+         
         this.keyValues[key.value] = valueToAssign;
     }
     get(keyToRetrieve: MyrString): MyrObject {
         return this.keyValues[keyToRetrieve.value] || new MyrNil();
     }
+    jsMethods = {
+        "_keys": () => { return new MyrArray(Object.keys(this.keyValues).map(key => new MyrString(key))); },
+        "_get": (k: MyrString) => this.keyValues[k.value],
+        // "_put": (k: MyrString, v: MyrObject) => this.keyValues[k.value] = v,
+        "_set": (arr: MyrArray | MyrHash) => {
+            // console.log("HASH _SET")
+            if (arr instanceof MyrHash) {
+                this.keyValues = arr.keyValues;
+            } else if (arr instanceof MyrArray) {
+                arr.elements.forEach((element) => {
+                    let tuple = element as MyrArray;
+                    let key = tuple.elements[0] as MyrString;
+                    let value = tuple.elements[1];
+                    this.set(key, value)
+                })
+            } else {
+                throw new Error("hash _set expects arrays or hashes")
+            }
+            // return new MyrNil()
+        },
+    }
 }
 
 const myrTypes: { [key: string]: typeof MyrObject } = {
     [ARRAY_CLASS_NAME]: MyrArray,
-    [MIRROR_CLASS_NAME]: MyrMirror,
+    [HASH_CLASS_NAME]: MyrHash,
+
     // @ts-ignore
     [STRING_CLASS_NAME]: MyrString,
     // @ts-ignore
     [NUMBER_CLASS_NAME]: MyrNumeric,
     // @ts-ignore
     [BOOLEAN_CLASS_NAME]: MyrBoolean,
-    MyrHash,
+
+    [MIRROR_CLASS_NAME]: MyrMirror,
 }
 export { myrTypes }

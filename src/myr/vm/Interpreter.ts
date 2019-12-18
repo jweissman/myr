@@ -3,17 +3,21 @@ import assertNever from 'assert-never';
 import { Value } from './AbstractMachine';
 import { Algebra } from "./Algebra";
 import { Controller } from './Controller';
+
 import { DB } from './DB';
 import { prettyInstruction, Instruction, instruct } from "./Instruction";
 import Machine from "./Machine";
 import { OpCode } from './OpCode';
 import { SimpleDB } from './SimpleDB';
 import Assembler from './Assembler';
-import { MyrObject, MyrNumeric, MyrFunction, myrTypes, myrClasses } from './Types';
+import { MyrObject, MyrNumeric, MyrFunction, myrTypes, myrClasses, WrappedFunction, MyrClass } from './Types';
 
-type Frame = { retAddr: number, db: DB, self: MyrObject }
-
+type Frame = { retAddr: number, db: DB,
+    self: MyrObject }
+    // selves: MyrObject[] } //self: MyrObject }
+class MainClass extends MyrClass { get name() {return 'Main'}}
 let main = new MyrObject();
+main.members.put("class", MainClass);
 
 abstract class Compiler<T> {
     abstract generateCode(ast: T): Instruction[];
@@ -23,27 +27,31 @@ class Interpreter<T> {
     public trace: boolean = false;
 
     public machine: Machine;
-    public controls: Controller;
+    public controls: Controller<T>;
 
     private ip: number = -1;
-    private frames: Frame[] = [{ retAddr: -1, db: new SimpleDB(), self: main }]
+    private frames: Frame[] = [{ retAddr: -1, db: new SimpleDB(),
+        self: main }]
+        // selves: [main]
+    // }]
     // private selves: MyrObject[] = [main];
 
     constructor(algebra: Algebra, private compiler: Compiler<T>) {
         this.machine = new Machine(algebra);
-        this.controls = new Controller(this.machine);
+        this.controls = new Controller(this);
 
-        this.install(Assembler.prelude())
+        this.run(Assembler.prelude())
     }
 
-    private get topFrame() { return this.frames[this.frames.length-1]; }
+    public get topFrame() { return this.frames[this.frames.length-1]; }
 
     private get retAddr(): number {
         return this.topFrame.retAddr;
     }
 
     public get self(): MyrObject {
-        return this.topFrame.self;
+        return this.topFrame.self //ves[thisselfame.selves.length-1];
+        // return this.topFrame.selves[this.topFrame.selves.length-1];
     }
 
     public get db(): DB {
@@ -63,42 +71,52 @@ class Interpreter<T> {
         let startTime = new Date().getTime();
         this.ip = this.indexForLabel("main") || 0;
         let steps = 0;
-        let stackLengths = []
+        // let stackLengths = []
+        let seenInstructions: { [key in OpCode]?: number } = {}
+        let lastLabel: string = '---'
         while (this.ip < this.currentProgram.length) {
             steps += 1;
             let instruction = this.currentInstruction;
             if (this.trace) {
-                console.log( `@${this.ip}: ` + prettyInstruction(instruction));
+                console.log(`@${this.ip}: ` + prettyInstruction(instruction));
             }
 
-            // if (this.trace && this.machine.stack.length) {
-            //     this.dumpStack('stack before')
-            // }
-            try {
-                this.execute(instruction);
-            } catch(e) {
-                console.warn(
-                    chalk.red("Error executing instruction " + prettyInstruction(instruction) + ":"+ e.message)
-                )
-                console.debug(this.currentProgram.slice(this.ip-5,this.ip+5))
-                throw(e);
-            }
-            if (this.trace && this.machine.stack.length) {
-                // this.dumpStack(chalk.green('stack after'))
-            }
+            if (instruction.op === 'noop') {
+                lastLabel = instruction.label || 'no-label';
+            } else {
+                // if (this.trace && this.machine.stack.length) {
+                //     this.dumpStack('stack before')
+                // }
+                try {
+                    this.execute(instruction);
+                    seenInstructions[instruction.op] = //push(instruction);
+                        (seenInstructions[instruction.op] || 0) + 1;
+                } catch (e) {
+                    console.warn(
+                        chalk.red("Error executing instruction " + prettyInstruction(instruction) + ":" + e.message)
+                    )
+                    console.debug("at method " + chalk.blue(lastLabel))
+                    console.debug(this.currentProgram.slice(this.ip - 5, this.ip + 5))
+                    throw (e);
+                }
+                if (this.trace && this.machine.stack.length) {
+                    this.dumpStack(chalk.green('stack after'))
+                }
 
-            // this.store(this.result)
-            if (this.machine.stack.length) {
-                this.machine.store("_", this.db);
-            }
+                // this.store(this.result)
+                if (this.machine.stack.length) {
+                    this.machine.store("_", this.db);
+                }
 
+            }
             this.ip++;
-            stackLengths.push(this.machine.stack.length)
+            // stackLengths.push(this.machine.stack.length)
         }
         let endTime = new Date().getTime();
         let elapsed = endTime - startTime;
         if (elapsed > 10) {
             console.log(`---> Ran ${steps} instructions in ${elapsed}ms: ${steps / elapsed} ops/ms`)
+            // console.debug(`---> opcodes invoked: ${JSON.stringify(seenInstructions)}`)
         }
     }
 
@@ -145,13 +163,19 @@ class Interpreter<T> {
         }
     }
 
-    private invoke(self = this.self) {
+
+    public invoke(self = this.self) {
         let top = this.machine.stackTop;
-        if (top && top instanceof MyrFunction) {
+        this.machine.pop()
+        if (top && top instanceof WrappedFunction) {
+            let { label, impl, closure } = top;
+            // this.machine.pop();
+            this.controls.callExec(impl, impl.length)
+        } else if (top && top instanceof MyrFunction) {
             let { label, closure } = top;
-            this.machine.pop()
-            // console.log("INVOKE FUNCTION", { label, self })
-            this.frames.push({ retAddr: this.ip, db: new SimpleDB(closure, this.db), self });
+            let db = new SimpleDB(closure, this.db)
+            this.frames.push({ retAddr: this.ip, db, self });
+            // console.log("INVOKE NORMAL FUNCTION", { label, closure, self, dbSelf: db.get("self") })
             this.jump(label);
         } else {
             console.log("no function to call?")
@@ -228,7 +252,9 @@ class Interpreter<T> {
                 this.jump_z(instruction.target);
                 break;
             case 'call': 
-                let newFrame = { retAddr: this.ip, db: new SimpleDB(this.db), self: this.self }
+                let newFrame = { retAddr: this.ip, db: new SimpleDB(this.db),
+                    self: this.self };
+                    // selves: [this.self] } //ves: [this.self] }
                 this.frames.push(newFrame)
                 this.jump(instruction.target);
                 break;
@@ -251,11 +277,14 @@ class Interpreter<T> {
             case 'hash_get': this.machine.hashGet(); break;
             case 'hash_put': this.machine.hashPut(); break;
             case 'send_eq':this.controls.sendEq(instruction.key); break;
-            case 'send_attr': this.controls.send(instruction.key); break;
+            case 'send_attr': this.controls.send(instruction.key, this.db); break;
             case 'send_call': 
-                let { receiver, called } = this.controls.send(instruction.key); 
+                // console.log(`send call ${instruction.key}`)
+                // debugger;
+                let { receiver, called } = this.controls.send(instruction.key, this.db); 
                 // if (receiver) {
                 if (!called) {
+                    // console.log(`${instruction.key} -- attempting to invoke...`, { receiver })
                     this.invoke(receiver);
                 }
                 break;
@@ -263,9 +292,13 @@ class Interpreter<T> {
                 if (instruction.key) {
                     if (myrTypes[instruction.key]) {
                         let Klass = myrTypes[instruction.key];
-                        let instance = new Klass()
-                        instance.members.put("class", myrClasses[instruction.key])
-                        this.controls.push(instance)
+                        let klass = new Klass()
+                        klass.members.put("class", myrClasses[instruction.key])
+                        // let { shared } = klass.members.store.class.members.store
+                        // console.log("FABRICATE INSTANCE", {
+                        //     key: instruction.key, instance: klass, shared: shared.members
+                        // })
+                        this.controls.push(klass)
                     } else {
                         this.controls.push(new MyrObject())
                     }
@@ -280,14 +313,20 @@ class Interpreter<T> {
                 }
                 this.dumpStack('[stack dump]')
                 break;
-            case 'mark': this.controls.mark(); break;
-            case 'sweep': this.controls.sweep(); break;
+            case 'mark': this.controls.mark('floor'); break;
+            case 'sweep': this.controls.sweep('floor'); break;
+            case 'mark_list': this.controls.mark('list'); break;
+            case 'gather': this.controls.gather('list'); break;
             default: assertNever(op);
         }
     }
 
     private dumpStack(message="Stack") {
-        console.log(message + ": " + this.machine.stack.map(val => (val instanceof MyrObject ? val.toJS() : JSON.stringify(val))));
+        let theStack = this.machine.stack.map(val => (val instanceof MyrObject ? val.toJS() : JSON.stringify(val)))
+        console.log(
+            message + ": " + theStack
+        );
+        console.log(chalk.gray("self: " + this.self.toJS()));
     }
 
     private indexForLabel(label: string): number | null {

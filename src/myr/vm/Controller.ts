@@ -1,11 +1,14 @@
-import { Value,} from "./AbstractMachine";
+import { Value } from "./AbstractMachine";
 import Machine from "./Machine";
 import { DB } from "./DB";
 import { SimpleDB } from "./SimpleDB";
-import { MyrObject, MyrBoolean, MyrHash, MyrString, Tombstone } from "./Types";
+import { MyrObject, MyrBoolean, MyrString, Tombstone, MyrArray, WrappedFunction } from "./Types";
+import Interpreter from "./Interpreter";
 
-export class Controller {
-    constructor(private machine: Machine) {}
+export class Controller<T> {
+    private get machine(): Machine { return this.meta.machine; }
+
+    constructor(private meta: Interpreter<T>) {}
 
     get rawResult() { 
         let value = this.machine.peek();
@@ -54,15 +57,16 @@ export class Controller {
         }
     }
 
-    public load(key: string | undefined, db: DB, overrides: { [k: string]: MyrObject}) {
+    public load(key: string | undefined, db: DB, fallbacks: { [k: string]: MyrObject}) {
         if (key) {
-            if (Object.keys(overrides).indexOf(key) !== -1) {
-                this.push(overrides[key])
-
-            } else {
-                // console.log("LOAD", { key, db: JSON.stringify(this.db) })
-                this.machine.load(key, db);
-            }
+          if (db.has(key)) {
+              // console.log("LOAD", { key, db: JSON.stringify(this.db) })
+              this.machine.load(key, db);
+          } else if (Object.keys(fallbacks).indexOf(key) !== -1) {
+              this.push(fallbacks[key])
+          } else {
+              throw new Error("Not found at load '" + key + "'")
+          }
         } else {
             throw new Error("Must have a key to reference loaded variable by")
         }
@@ -75,27 +79,22 @@ export class Controller {
         this.machine.pop();
         let msg = key;
         if (msg) {
-            if (recv instanceof MyrHash) {
-                this.push(recv);
-                this.push(new MyrString(msg));
-                this.push(value);
-                this.machine.hashPut();
-            } else {
-                (recv as MyrObject).members.put(msg, value);
-            }
+        //     if (recv instanceof MyrHash) {
+        //         this.push(recv);
+        //         this.push(new MyrString(msg));
+        //         this.push(value);
+
+            (recv as MyrObject).members.put(msg, value);
+        //     }
         } else {
             throw new Error("must provide a key for send_eq?")
         }
     }
 
-    public send(key: string | undefined): { called: boolean, receiver: MyrObject } { //(instruction: Instruction) {
+    private respondsTo(key: string | undefined): boolean {
         let receiver = this.machine.peek();
-        let called = false;
-        if (receiver instanceof MyrHash && key) {
-            this.machine.push(new MyrString(key));
-            this.machine.hashGet();
-        } else if (receiver instanceof MyrObject) { // assume we're an object
-            this.machine.pop();
+        if (receiver instanceof MyrObject) { // assume we're an object
+            // this.machine.pop();
             let message = (key);
             if (message) {
                 let hasClass = receiver.members.has("class");
@@ -103,28 +102,89 @@ export class Controller {
                 let hasClassMethod = hasClass &&
                     receiver.members.get("class").members.has("shared") &&
                     receiver.members.get("class").members.get("shared").members.has(message);
-                        // debugger;
+                if ((receiver.members as SimpleDB).has(message)) {
+                    return true;
+                    // let member = receiver.members.get(message);
 
+                    // this.push(member);
+                } else if (hasClass && hasClassMethod) {
+                    return true;
+                    // let member = receiver.members.get("class").members.get("shared").members.get(message);
+                    // this.push(member);
+                } else {
+                    let fn = receiver.jsMethods[message];
+                    if (fn) {
+                        // this.callExec(fn,fn.length)
+                        // called = true;
+                        return true;
+                    } else {
+                        console.trace("method missing", { klass, receiver, message, hasClass, hasClassMethod })
+                        // this.push(key);
+                        // this.machine.push(receiver);
+                        // this.send('method_missing') //receiver
+                        // if (failMissing) {
+                            // throw new Error("Method missing on " + (receiver.toJS()) + ": " + message);
+                        // }
+                    }
+                }
+            } else {
+                throw new Error("respond to expects key of message to dispatch");
+            }
+        } else {
+            throw new Error("respond to expects receiver to be object");
+        }
+        return false;
+
+    }
+
+    private methodMissing(message: string, receiver: MyrObject, db: DB) {
+        this.machine.push(receiver);
+        if (this.respondsTo("method_missing")) {
+            this.machine.pop();
+            this.machine.push(new MyrString(message))
+            this.machine.push(receiver);
+            this.send('method_missing', db)
+            // this.meta.topFrame.selves.push(receiver);
+            this.meta.invoke(receiver)
+            // this.meta.topFrame.selves.pop()
+        } else {
+            throw new Error("Method missing on " + (receiver.toJS()) + ": " + message);
+        }
+    }
+
+    public send(key: string | undefined, db: DB): { called: boolean, receiver: MyrObject } {
+        let receiver = this.machine.peek();
+        let called = false;
+        // console.log("SEND", { key, receiver})
+        // if (receiver instanceof MyrHash && key) {
+        //     this.machine.push(new MyrString(key));
+        //     this.machine.hashGet();
+        // } else
+        if (receiver instanceof MyrObject) { // assume we're an object
+            this.machine.pop();
+            let message = (key);
+            if (message) {
+                let hasClass = receiver.members.has("class");
+                // let klass = hasClass ? receiver.members.get("class") : undefined;
+                let hasClassMethod = hasClass &&
+                    receiver.members.get("class").members.has("shared") &&
+                    receiver.members.get("class").members.get("shared").members.has(message);
                 if ((receiver.members as SimpleDB).has(message)) {
                     let member = receiver.members.get(message);
                     this.push(member);
                 } else if (hasClass && hasClassMethod) {
-                    // receiver.members.get("class").members.has("shared") &&
-                    // receiver.members.get("class").members.get("shared").members.has(message)) {
-                    let member = // receiver.members.get("class").shared
-                        receiver.members.get("class").members.get("shared").members.get(message);
-                    // let member = definition.members.get(message);
+                    let member = receiver.members.get("class").members.get("shared").members.get(message);
                     this.push(member);
                 } else {
                     let fn = receiver.jsMethods[message];
                     if (fn) {
-                        this.callExec(fn,fn.length)
-                        called = true;
+                        let wrappedDb = db.clone();
+                        wrappedDb.put("self", receiver);
+                        this.machine.push(new WrappedFunction(message, fn, wrappedDb));
+                        called = false;
                     } else {
-                        // if (failMissing) {
-                            console.trace("method missing", { klass, receiver, message, hasClass, hasClassMethod })
-                            throw new Error("Method missing on " + (receiver.toJS()) + ": " + message);
-                        // }
+                        this.methodMissing(message, receiver, db)
+                        called = false;
                     }
                 }
             } else {
@@ -158,18 +218,38 @@ export class Controller {
         }
     }
 
-    public mark() {
-        this.push(new Tombstone());
+    public mark(label: string) {
+        this.push(new Tombstone(label));
     }
 
-    public sweep() {
+    public sweep(label: string) {
         let done = false;
         while (this.machine.stack.length > 0 && !done) {
-            if (this.machine.peek() instanceof Tombstone) {
-                done = true;
+            let it = this.machine.peek()
+            if (it instanceof Tombstone) {
+                if (it.label === label) {
+                    done = true;
+                }
             }
             this.machine.pop();
         }
+    }
+
+    public gather(label: string) {
+        let done = false;
+        let list = new MyrArray();
+        while (this.machine.stack.length > 0 && !done) {
+            let it = this.machine.peek()
+            if (it instanceof Tombstone) {
+                if (it.label === label) {
+                    done = true;
+                }
+            } else {
+                list.members.get("arr").push(this.machine.peek());
+            }
+            this.machine.pop();
+        }
+        this.machine.push(list);
     }
 
     public compare(expected: number, cmp=(l: number,r: number)=>l===r) {

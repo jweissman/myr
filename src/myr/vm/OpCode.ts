@@ -34,6 +34,9 @@ export type OpCode =
                    | 'send_eq'   // .a=
                    | 'construct' // raw construct, put a new myr object on the stack
 
+                   | 'mark_list' // put a special list marker on the stack
+                   | 'gather'    // accum objects until list marker and push a new 'raw' list on the stack
+
                    | 'cmp'
                    | 'cmp_gt'
                    | 'cmp_lt'
@@ -49,6 +52,10 @@ export type OpCode =
                    | 'exec'            // EXEC   -- execute a JS function given as such by [jsMethod],
                                        //           giving stack as positional args up to [arity]
                    | 'compile'         // COMPILE -- take ast and generate code for it
+
+                  //  | 'set_self' // set self for current call frame...
+                  // | 'enter' // set self...
+                  //  | 'pop_self' // set self
 
                    | 'ret'
                    | 'halt' // hard stop

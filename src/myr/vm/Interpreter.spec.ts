@@ -492,4 +492,19 @@ describe(Interpreter, () => {
         ])
         expect(interpreter.result).toEqual(false)
     })
+
+    xit('object ctor', () => {
+        interpreter.run([
+            instruct('push', { value: 2 }),
+            instruct('construct', { key: 'Number' }),
+            instruct('send_call', { key: 'new' }),
+        ])
+        expect(interpreter.result).toBeInstanceOf(MyrNumeric)
+
+        interpreter.run([
+            instruct('push', { value: true }),
+            instruct('construct', { key: 'Boolean' })
+        ])
+        expect(interpreter.result).toBeInstanceOf(MyrBoolean)
+    })
 })
